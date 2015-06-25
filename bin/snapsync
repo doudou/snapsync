@@ -2,18 +2,37 @@
 require 'optparse'
 require 'snapsync'
 
+debug = false
 parser = OptionParser.new do |opt|
+    opt.banner = "snapsync snapper_conf target_dir"
+    opt.on '--debug', 'show full backtrace on error' do
+        debug = true
+    end
 end
 config, target_dir = parser.parse(ARGV)
+if !config || !target_dir
+    puts parser
+    exit 1
+end
 
-config =
-    if Pathname.new(config).file?
-        Snapsync::SnapperConfig.load(config)
+begin
+    config =
+        if Pathname.new(config).file?
+            Snapsync::SnapperConfig.load(config)
+        else
+            Snapsync::SnapperConfig.load(Pathname.new("/etc/snapper/configs/#{config}"))
+        end
+    target_dir = Pathname.new(target_dir)
+
+    sync = Snapsync::LocalSync.new(config, target_dir)
+    sync.sync
+rescue Interrupt
+    Snapsync.info "Interrupted by user"
+rescue Exception => e
+    if debug
+        raise
     else
-        Snapsync::SnapperConfig.load(Pathname.new("/etc/snapper/configs/#{config}"))
+        Snapsync.fatal e.message
     end
-target_dir = Pathname.new(target_dir)
-
-sync = Snapsync::LocalSync.new(config, target_dir)
-sync.sync
+end
 
