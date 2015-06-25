@@ -56,8 +56,12 @@ module Snapsync
 
                         longest_message_length = 0
                         receive_status, send_status = nil
-                        IO.popen(['sudo', 'btrfs', 'send', *parent_opt, src.subvolume_dir.to_s]) do |send_io|
-                            IO.popen(['sudo', 'btrfs', 'receive', target_snapshot_dir.to_s], 'w') do |receive_io|
+                        err_send_pipe_r, err_send_pipe_w = IO.pipe
+                        err_receive_pipe_r, err_receive_pipe_w = IO.pipe
+                        IO.popen(['sudo', 'btrfs', 'send', *parent_opt, src.subvolume_dir.to_s, err: err_send_pipe_w]) do |send_io|
+                            err_send_pipe_w.close
+                            IO.popen(['sudo', 'btrfs', 'receive', target_snapshot_dir.to_s, err: err_receive_pipe_w], 'w') do |receive_io|
+                                err_receive_pipe_w.close
                                 receive_io.sync = true
                                 counter = 0
                                 start = Time.now
@@ -89,6 +93,18 @@ module Snapsync
                         end
                         send_status = $?
                         success = (receive_status.success? && send_status.success?)
+                        if !send_status.success?
+                            Snapsync.warn "btrfs send reported an error"
+                            err_send_pipe_w.readlines.each do |line|
+                                Snapsync.warn "  #{line.chomp}"
+                            end
+                        end
+                        if !receive_status.success?
+                            Snapsync.warn "btrfs receive reported an error"
+                            err_receive_pipe_w.readlines.each do |line|
+                                Snapsync.warn "  #{line.chomp}"
+                            end
+                        end
 
                         if success
                             Snapsync.info "Successfully synchronized #{src.snapshot_dir}"
