@@ -70,6 +70,8 @@ module Snapsync
                                         remaining =
                                             if estimated_size > counter
                                                 human_readable_time((estimated_size - counter) / rate)
+                                            elsif counter - estimated_size < 100 * 1024**2
+                                                human_readable_time(0)
                                             else
                                                 '?'
                                             end
