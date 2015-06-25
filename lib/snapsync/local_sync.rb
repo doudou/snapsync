@@ -62,7 +62,7 @@ module Snapsync
                                 counter = 0
                                 start = Time.now
                                 while !send_io.eof?
-                                    if buffer = send_io.read(20 << 20)
+                                    if buffer = send_io.read(1 << 20) # 1MB buffer
                                         receive_io.write(buffer)
 
                                         counter += buffer.size
