@@ -38,8 +38,8 @@ module Snapsync
         # This is an estimate of the size required to send this snapshot using
         # the given snapshot as parent
         def size_diff_from(snapshot)
-            info = `sudo btrfs subvolume info '#{snapshot.subvolume_dir}`
-            info =~ /Generation[^=]:\s+(\d+)/
+            info = `sudo btrfs subvolume show '#{snapshot.subvolume_dir}'`
+            info =~ /Generation[^:]*:\s+(\d+)/
             size_diff_from_gen(Integer($1))
         end
 
