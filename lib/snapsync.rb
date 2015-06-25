@@ -1,10 +1,11 @@
 require 'pathname'
 require 'logging'
+require 'rexml/document'
 require "snapsync/version"
 require "snapsync/exceptions"
 require "snapsync/snapper_config"
 require "snapsync/snapshot"
-require 'rexml/document'
+require "snapsync/local_sync"
 
 module Logging
     module Installer
@@ -15,6 +16,7 @@ module Logging
 
     module Forwarder
         ::Logging::LEVELS.each do |name, _|
+            puts name
             define_method name do |*args, &block|
                 logger.send(name, *args, &block)
             end

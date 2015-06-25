@@ -1,0 +1,19 @@
+#! /usr/bin/env ruby
+require 'optparse'
+require 'snapsync'
+
+parser = OptionParser.new do |opt|
+end
+config, target_dir = parser.parse(ARGV)
+
+config =
+    if Pathname.new(config).file?
+        Snapsync::SnapperConfig.load(config)
+    else
+        Snapsync::SnapperConfig.load(Pathname.new("/etc/snapper/configs/#{config}"))
+    end
+target_dir = Pathname.new(target_dir)
+
+sync = Snapsync::LocalSync.new(config, target_dir)
+sync.sync
+

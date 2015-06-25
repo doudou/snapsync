@@ -33,6 +33,56 @@ module Snapsync
             load_info
         end
 
+        # Compute the size difference between the given snapshot and self
+        #
+        # This is an estimate of the size required to send this snapshot using
+        # the given snapshot as parent
+        def size_diff_from(snapshot)
+            info = `sudo btrfs subvolume info '#{snapshot.subvolume_dir}`
+            info =~ /Generation[^=]:\s+(\d+)/
+            size_diff_from_gen(Integer($1))
+        end
+
+        # Compute the size of the snapshot
+        def size
+            size_diff_from_gen(0)
+        end
+
+        def size_diff_from_gen(gen)
+            new = `sudo btrfs subvolume find-new '#{subvolume_dir}' #{gen}`
+            new.split("\n").inject(0) do |size, line|
+                if line.strip =~ /len (\d+)/
+                    size + Integer($1)
+                else size
+                end
+            end
+        end
+
+        # Enumerate the snapshots from the given directory
+        #
+        # The directory is supposed to be maintained in a snapper-compatible
+        # foramt, meaning that the snapshot directory name must be the
+        # snapshot's number
+        def self.each(snapshot_dir)
+            return enum_for(__method__, snapshot_dir) if !block_given?
+            snapshot_dir.each_child do |path|
+                if path.directory? && path.basename.to_s =~ /^\d+$/
+                    begin
+                        snapshot = Snapshot.new(path)
+                    rescue InvalidSnapshot => e
+                        Snapsync.warn "ignored #{path} in #{self}: #{e}"
+                    end
+                    if snapshot
+                        if snapshot.num != Integer(path.basename.to_s)
+                            Snapsync.warn "ignored #{path} in #{self}: the snapshot reports num=#{snapshot.num} but its directory is called #{path.basename}"
+                        else
+                            yield snapshot
+                        end
+                    end
+                end
+            end
+        end
+
         # Loads snapper's info.xml, validates it and assigns the information to
         # the relevant attributes
         def load_info
