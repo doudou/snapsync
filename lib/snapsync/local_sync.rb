@@ -60,7 +60,7 @@ module Snapsync
                         err_receive_pipe_r, err_receive_pipe_w = IO.pipe
                         IO.popen(['sudo', 'btrfs', 'send', *parent_opt, src.subvolume_dir.to_s, err: err_send_pipe_w]) do |send_io|
                             err_send_pipe_w.close
-                            IO.popen(['sudo', 'btrfs', 'receive', target_snapshot_dir.to_s, err: err_receive_pipe_w], 'w') do |receive_io|
+                            IO.popen(['sudo', 'btrfs', 'receive', target_snapshot_dir.to_s, err: err_receive_pipe_w, out: '/dev/null'], 'w') do |receive_io|
                                 err_receive_pipe_w.close
                                 receive_io.sync = true
                                 counter = 0
@@ -87,7 +87,7 @@ module Snapsync
                                 end
                                 rate = counter / (Time.now - start)
                                 print "\r"
-                                Snapsync.info "%-#{longest_message_length}s" % ["Transferred #{human_readable_size(counter)} in #{human_readable_size(rate)}/s"]
+                                Snapsync.info "%-#{longest_message_length}s" % ["Transferred #{human_readable_size(counter)} in #{human_readable_time(Time.now - start)} (#{human_readable_size(rate)}/s)"]
                             end
                             receive_status = $?
                         end
@@ -110,7 +110,7 @@ module Snapsync
                             Snapsync.info "Successfully synchronized #{src.snapshot_dir}"
                             last_common_snapshot = src
                             Snapsync.info "Flushing data to disk"
-                            IO.popen(["sudo", "btrfs", "filesystem", "sync", target_snapshot_dir.to_s, err: :out, out: '/dev/null'])
+                            IO.popen(["sudo", "btrfs", "filesystem", "sync", target_snapshot_dir.to_s, err: '/dev/null'])
                         end
 
                     rescue EOFError
