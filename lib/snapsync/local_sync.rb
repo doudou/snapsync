@@ -18,6 +18,7 @@ module Snapsync
         end
 
         def sync
+            STDOUT.sync = true
             source_snapshots = config.each_snapshot.sort_by(&:num)
             target_snapshots = Snapshot.each(target_dir).sort_by(&:num)
 
@@ -51,7 +52,7 @@ module Snapsync
                             estimated_size = src.size
                         end
 
-                        puts "Estimating transfer to be #{human_readable_size(estimated_size)}"
+                        Snapsync.info "Estimating transfer for #{src.snapshot_dir} to be #{human_readable_size(estimated_size)}"
 
                         longest_message_length = 0
                         receive_status, send_status = nil
@@ -75,11 +76,12 @@ module Snapsync
 
                                         msg = "#{human_readable_size(counter)} (#{human_readable_size(rate)}/s), #{remaining} remaining"
                                         longest_message_length = [longest_message_length, msg.length].max
-                                        print "\r%#{longest_message_length}s" % [msg]
+                                        print "\r%-#{longest_message_length}s" % [msg]
                                     end
                                 end
                                 rate = counter / (Time.now - start)
-                                puts "Transferred #{human_readable_size(counter)} in #{human_readable_size(rate)}/s"
+                                print "\r"
+                                Snapsync.info "%-#{longest_message_length}s" % ["Transferred #{human_readable_size(counter)} in #{human_readable_size(rate)}/s"]
                             end
                             receive_status = $?
                         end
@@ -89,7 +91,8 @@ module Snapsync
                         if success
                             Snapsync.info "Successfully synchronized #{src.snapshot_dir}"
                             last_common_snapshot = src
-                            system("sudo", "btrfs", "filesystem", "sync", target_snapshot_dir.to_s)
+                            Snapsync.info "Flushing data to disk"
+                            IO.popen(["sudo", "btrfs", "filesystem", "sync", target_snapshot_dir.to_s, err: :out, out: '/dev/null'])
                         end
 
                     rescue EOFError
@@ -98,7 +101,7 @@ module Snapsync
                             Snapsync.warn "Failed to synchronize #{src.snapshot_dir}, deleting target directory"
                             subvolume_dir = target_snapshot_dir + "snapshot"
                             if subvolume_dir.directory?
-                                system("sudo btrfs subvolume delete #{subvolume_dir}")
+                                system("sudo", "btrfs", "subvolume", "delete", subvolume_dir.to_s)
                             end
                             target_snapshot_dir.rmtree
                         end
