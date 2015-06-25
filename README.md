@@ -8,23 +8,27 @@ receive to achieve it
 
 ## Installation
 
-Add this line to your application's Gemfile:
-
-```ruby
-gem 'snapsync'
-```
-
-And then execute:
-
-    $ bundle
-
-Or install it yourself as:
+Run
 
     $ gem install snapsync
 
 ## Usage
 
-TODO: Write usage instructions here
+To synchronize the snapshots of the 'home' snapper configuration to an existing
+directory, run
+
+    $ snapsync home /media/backup
+
+Snapsync uses sudo to get root access. If you wish to not run it as root, you
+will need to change the snapper permissions to give read access to all the
+snapper shapshots, e.g.
+
+    $ chmod go+rx /.snapshots
+    $ chmod go+r /.snapshots/*/info.xml
+
+In addition, sudo will ask for your root password when applicable. If you wish
+to fully automate, you will need to allow snapsync to run the btrfs tool without
+password in the sudoers file.
 
 ## Development
 
@@ -33,7 +37,6 @@ To install this gem onto your local machine, run `bundle exec rake install`. To 
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/snapsync.
-
 
 ## License
 
