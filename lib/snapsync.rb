@@ -30,8 +30,11 @@ class Module
         else
             logger.add_appenders Logging.appenders.stdout
         end
+
         if forward
-            install_logging_forwarder
+            singleton_class.class_eval do
+                install_logging_forwarder
+            end
         end
     end
 
