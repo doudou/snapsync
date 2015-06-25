@@ -17,6 +17,34 @@ module Snapsync
             @subvolume, @fstype = nil
         end
 
+        # The directory containing the snapshots
+        def snapshot_dir
+            subvolume + ".snapshots"
+        end
+
+        # Enumerate the valid snapshots in this configuration
+        #
+        # @yieldparam [Snapshot] snapshot
+        def each_snapshot
+            return enum_for(__method__) if !block_given?
+            snapshot_dir.each_child do |path|
+                if path.directory? && path.basename.to_s =~ /^\d+$/
+                    begin
+                        snapshot = Snapshot.new(path)
+                    rescue InvalidSnapshot => e
+                        Snapsync.warn "ignored #{path} in #{self}: #{e}"
+                    end
+                    if snapshot
+                        if snapshot.num != Integer(path.basename.to_s)
+                            Snapsync.warn "ignored #{path} in #{self}: the snapshot reports num=#{snapshot.num} but its directory is called #{path.basename}"
+                        else
+                            yield snapshot
+                        end
+                    end
+                end
+            end
+        end
+
         # Create a SnapperConfig object from the data in a configuration file
         #
         # @param [#readlines] path the file

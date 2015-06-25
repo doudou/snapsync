@@ -1,7 +1,10 @@
 require 'pathname'
 require 'logging'
 require "snapsync/version"
+require "snapsync/exceptions"
 require "snapsync/snapper_config"
+require "snapsync/snapshot"
+require 'rexml/document'
 
 module Logging
     module Installer
