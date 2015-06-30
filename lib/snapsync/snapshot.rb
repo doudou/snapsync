@@ -19,6 +19,11 @@ module Snapsync
         # The snapshot number
         attr_reader :num
 
+        # This snapshot's reference time
+        def to_time
+            date.to_time
+        end
+
         def initialize(snapshot_dir)
             @snapshot_dir = snapshot_dir
 
