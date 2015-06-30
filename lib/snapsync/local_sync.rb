@@ -131,7 +131,7 @@ module Snapsync
                         end
                     end
                 else
-                    Snapsync.info "Snapshot #{src.snapshot_dir} already present on the target"
+                    Snapsync.debug "Snapshot #{src.snapshot_dir} already present on the target"
                     last_common_snapshot = src
                 end
             end

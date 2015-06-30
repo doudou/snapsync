@@ -3,9 +3,17 @@ require 'optparse'
 require 'snapsync'
 
 debug = false
+async = false
 cleanup = nil
+all = false
 parser = OptionParser.new do |opt|
     opt.banner = "snapsync snapper_conf target_dir"
+    opt.on '--all', 'synchronize all configurations' do
+	all = true
+    end
+    opt.on '--async', 'run in asynchronous mode' do
+        async = true
+    end
     opt.on '--debug', 'show full backtrace on error' do
         debug = true
     end
@@ -17,9 +25,15 @@ parser = OptionParser.new do |opt|
     end
 end
 config, target_dir = parser.parse(ARGV)
-if !config || !target_dir
+if !config
     puts parser
     exit 1
+elsif !all && !target_dir
+    puts parser
+    exit 1
+elsif all && !target_dir
+    target_dir = config
+    config = "/etc/snapper/configs"
 end
 
 if debug
@@ -27,24 +41,47 @@ if debug
 end
 
 begin
-    config =
-        if Pathname.new(config).file?
-            Snapsync::SnapperConfig.load(config)
-        else
-            Snapsync::SnapperConfig.load(Pathname.new("/etc/snapper/configs/#{config}"))
-        end
     target_dir = Pathname.new(target_dir)
 
-    if cleanup
-        require "snapsync/timeline_cleanup"
-        cleaner = Snapsync::TimelineCleanup.new(config, target_dir)
-        [:hour,:week,:month,:year].zip(cleanup) do |period, count|
-            cleaner.add(period, count)
-        end
-        cleaner.cleanup
+    if all
+        config = Pathname.new(config)
+        snapper_configurations = config.enum_for(:each_entry).map do |config_file|
+            config_name = config_file.to_s
+            config_file = config + config_file
+            next if !config_file.file?
+            begin
+                c = Snapsync::SnapperConfig.load(config_file)
+                [c, target_dir + config_file.basename]
+            rescue Exception => e
+                Snapsync.warn "not processing #{config_file}: #{e.message}"
+                nil
+            end
+        end.compact
     else
-        Snapsync::LocalSync.new(config, target_dir).sync
+        config_file =
+            if Pathname.new(config).file?
+                config
+            else
+                Pathname.new("/etc/snapper/configs/#{config}")
+            end
+        snapper_configurations << [Snapsync::SnapperConfig.load(config_file), target_dir]
     end
+
+    snapper_configurations.each do |config, target|
+        if cleanup
+            require "snapsync/timeline_cleanup"
+            Snapsync.info "cleaning up #{config.name} on #{target}"
+            cleaner = Snapsync::TimelineCleanup.new(config, target)
+            [:hour,:week,:month,:year].zip(cleanup) do |period, count|
+                cleaner.add(period, count)
+            end
+            cleaner.cleanup
+        else
+            Snapsync.info "synchronizing #{config.name} to #{target}"
+            Snapsync::LocalSync.new(config, target).sync
+        end
+    end
+
 rescue Interrupt
     Snapsync.info "Interrupted by user"
 rescue Exception => e
