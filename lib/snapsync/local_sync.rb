@@ -115,7 +115,7 @@ module Snapsync
                             Snapsync.info "Successfully synchronized #{src.snapshot_dir}"
                             last_common_snapshot = src
                             Snapsync.info "Flushing data to disk"
-                            IO.popen(["sudo", "btrfs", "filesystem", "sync", target_snapshot_dir.to_s, err: '/dev/null'])
+                            IO.popen(["sudo", "btrfs", "filesystem", "sync", target_snapshot_dir.to_s, err: '/dev/null']).read
                             partial_marker_path.unlink
                         end
 
