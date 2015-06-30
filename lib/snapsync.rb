@@ -25,7 +25,7 @@ module Logging
 end
 
 class Module
-    def install_root_logging(forward: true, &block)
+    def install_root_logging(level: 'INFO', forward: true, &block)
         extend Logging::Installer
         if block_given?
             yield(logger)
@@ -38,6 +38,7 @@ class Module
                 install_logging_forwarder
             end
         end
+        logger.level = level
     end
 
     def install_logging_forwarder

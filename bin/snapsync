@@ -22,6 +22,10 @@ if !config || !target_dir
     exit 1
 end
 
+if debug
+    Snapsync.logger.level = 'DEBUG'
+end
+
 begin
     config =
         if Pathname.new(config).file?
