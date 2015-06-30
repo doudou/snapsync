@@ -32,13 +32,18 @@ module Snapsync
             source_snapshots.each do |src|
                 if !target_snapshots.find { |s| s.num == src.num }
                     target_snapshot_dir = (target_dir + src.num.to_s)
+                    partial_marker_path = target_snapshot_dir + "snapsync-partial"
                     if target_snapshot_dir.exist?
-                        Snapsync.warn "target snapshot directory #{target_snapshot_dir} already exists, but does not seem to be a valid snapper snapshot, I won't synchronize the source"
-                        next
+                        if partial_marker_path.exists?
+                            Snapsync.warn "target snapshot directory #{target_snapshot_dir} looks like an aborted snapsync synchronization, I will attempt to refresh it"
+                        else
+                            Snapsync.warn "target snapshot directory #{target_snapshot_dir} already exists, but does not seem to be a valid snapper snapshot. I will attempt to refresh it"
+                        end
                     end
 
                     success = false
                     target_snapshot_dir.mkdir
+                    FileUtils.touch(partial_marker_path.to_s)
                     begin
                         File.open(target_snapshot_dir + "info.xml", 'w') do |io|
                             io.write (src.snapshot_dir + "info.xml").read
@@ -111,6 +116,7 @@ module Snapsync
                             last_common_snapshot = src
                             Snapsync.info "Flushing data to disk"
                             IO.popen(["sudo", "btrfs", "filesystem", "sync", target_snapshot_dir.to_s, err: '/dev/null'])
+                            partial_marker_path.unlink
                         end
 
                     rescue EOFError
