@@ -19,6 +19,11 @@ module Snapsync
         # The snapshot number
         attr_reader :num
 
+        # The snapshot's user data
+        #
+        # @return [Hash<String,String>]
+        attr_reader :user_data
+
         # This snapshot's reference time
         def to_time
             date.to_time
@@ -113,6 +118,13 @@ module Snapsync
                 raise InvalidInfoFile, "#{snapshot_dir}/info.xml does not have a num element"
             else
                 @num = Integer(num.first.text)
+            end
+
+            @user_data = Hash.new
+            xml.root.elements.to_a('userdata').each do |node|
+                k = node.elements['key'].text
+                v = node.elements['value'].text
+                user_data[k] = v
             end
         end
     end

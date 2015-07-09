@@ -30,6 +30,10 @@ module Snapsync
         it "raises InvalidSnapshot if the subvolume directory does not exist" do
             assert_raises(InvalidSnapshot) { Snapshot.new(stub_snapshots_dir + "no_subvolume_directory") }
         end
+        it "reads the user data" do
+            assert_equal Hash['important' => 'yes', 'test' => 'blabla'],
+                Snapshot.new(stub_snapshots_dir + "valid").user_data
+        end
     end
 end
 

@@ -6,4 +6,12 @@
   <uid>0</uid>
   <description>timeline</description>
   <cleanup>timeline</cleanup>
+  <userdata>
+      <key>important</key>
+      <value>yes</value>
+  </userdata>
+  <userdata>
+      <key>test</key>
+      <value>blabla</value>
+  </userdata>
 </snapshot>
