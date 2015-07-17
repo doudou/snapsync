@@ -45,6 +45,7 @@ module Snapsync
             config['policy']['type'] =
                 case sync_policy
                 when TimelineSyncPolicy then 'timeline'
+                when SyncLastPolicy then 'last'
                 when DefaultSyncPolicy then 'default'
                 end
             config['policy']['options'] =
@@ -94,6 +95,9 @@ module Snapsync
             when 'timeline'
                 sync_policy = TimelineSyncPolicy
                 cleanup = TimelineCleanup
+            when 'last'
+                sync_policy = SyncLastPolicy
+                cleanup = KeepLastCleanup
             else
                 raise InvalidConfiguration, "synchronization policy #{type} does not exist"
             end

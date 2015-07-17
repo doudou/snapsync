@@ -9,7 +9,10 @@ require "snapsync/snapper_config"
 require "snapsync/snapshot"
 require "snapsync/local_target"
 require "snapsync/local_sync"
+
 require 'snapsync/default_sync_policy'
+require 'snapsync/sync_last_policy'
+require 'snapsync/keep_last_cleanup'
 require 'snapsync/timeline_sync_policy'
 require 'snapsync/timeline_cleanup'
 
