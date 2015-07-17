@@ -1,5 +1,6 @@
 require 'pathname'
 require 'logging'
+require 'pp'
 require 'securerandom'
 require 'rexml/document'
 require "snapsync/version"
@@ -9,6 +10,8 @@ require "snapsync/snapshot"
 require "snapsync/local_target"
 require "snapsync/local_sync"
 require 'snapsync/default_sync_policy'
+require 'snapsync/timeline_sync_policy'
+require 'snapsync/timeline_cleanup'
 
 module Logging
     module Installer

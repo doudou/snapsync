@@ -9,17 +9,9 @@ module Snapsync
         #
         # @return [LocalTarget]
         attr_reader :target
-        # The synchronization policy
-        #
-        # This is the object that decides which snapshots to copy and which to
-        # not copy
-        #
-        # @see DefaultSyncPolicy
-        attr_reader :policy
         
-        def initialize(config, target, policy: DefaultSyncPolicy.new)
+        def initialize(config, target)
             @config, @target = config, target
-            @policy = policy
         end
 
         def create_synchronization_point
@@ -158,7 +150,7 @@ module Snapsync
                 Snapsync.warn "no common snapshot found, will have to synchronize the first snapshot fully"
             end
 
-            snapshots_to_sync = policy.filter_snapshots_to_sync(self, target, source_snapshots)
+            snapshots_to_sync = target.sync_policy.filter_snapshots_to_sync(self, target, source_snapshots)
             snapshots_to_sync.each do |src|
                 if target_snapshots.find { |s| s.num == src.num }
                     Snapsync.debug "Snapshot #{src.snapshot_dir} already present on the target"
