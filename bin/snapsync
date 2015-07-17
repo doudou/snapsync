@@ -78,6 +78,7 @@ begin
             cleaner.cleanup
         else
             Snapsync.info "synchronizing #{config.name} to #{target}"
+            target = Snapsync::LocalTarget.new(target)
             Snapsync::LocalSync.new(config, target).sync
         end
     end

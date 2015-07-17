@@ -6,7 +6,9 @@ require "snapsync/version"
 require "snapsync/exceptions"
 require "snapsync/snapper_config"
 require "snapsync/snapshot"
+require "snapsync/local_target"
 require "snapsync/local_sync"
+require 'snapsync/default_sync_policy'
 
 module Logging
     module Installer

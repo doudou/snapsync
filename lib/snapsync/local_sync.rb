@@ -7,57 +7,25 @@ module Snapsync
         attr_reader :config
         # The target directory into which to synchronize
         #
-        # @return [Pathname]
-        attr_reader :target_dir
-        # The target's UUID
-        attr_reader :uuid
+        # @return [LocalTarget]
+        attr_reader :target
+        # The synchronization policy
+        #
+        # This is the object that decides which snapshots to copy and which to
+        # not copy
+        #
+        # @see DefaultSyncPolicy
+        attr_reader :policy
         
-        class InvalidUUIDError < RuntimeError; end
-        class NoUUIDError < InvalidUUIDError; end
-
-        def initialize(config, target_dir)
-            if !target_dir.directory?
-                raise ArgumentError, "#{target_dir} does not exist"
-            end
-            @config, @target_dir = config, target_dir
-
-            begin
-                read_target_config
-            rescue NoUUIDError
-                @uuid = SecureRandom.uuid
-                write_target_config
-            end
-        end
-
-        def write_target_config
-            File.open(target_config_path, 'w') do |io|
-                io.write YAML.dump(Hash['uuid' => uuid])
-            end
-        end
-
-        def read_target_config
-            begin
-                raw_config = YAML.load(target_config_path.read)
-            rescue Errno::ENOENT => e
-                raise NoUUIDError, e.message, e.backtrace
-            end
-
-            uuid = raw_config['uuid']
-            if uuid.length != 36
-                raise InvalidUUIDError, "uuid in #{uuid_path} was expected to be 36 characters long, but is #{uuid.length}"
-            end
-            @uuid = uuid
-        end
-
-        # Path to the target's UUID file
-        def target_config_path
-            target_dir + "snapsync.config"
+        def initialize(config, target, policy: DefaultSyncPolicy.new)
+            @config, @target = config, target
+            @policy = policy
         end
 
         def create_synchronization_point
             config.create(
                 description: "synchronization snapshot for snapsync",
-                user_data: Hash['important' => 'yes', 'snapsync' => uuid])
+                user_data: Hash['important' => 'yes', 'snapsync' => target.uuid])
         end
 
         def remove_synchronization_points(except: nil)
@@ -65,7 +33,7 @@ module Snapsync
 
             to_delete = config.each_snapshot.find_all do |snapshot|
                 (snapshot.num != except_num) &&
-                    (snapshot.user_data['snapsync'] == uuid)
+                    (snapshot.user_data['snapsync'] == target.uuid)
             end
             to_delete.each do |snapshot|
                 config.delete(snapshot)
@@ -181,7 +149,7 @@ module Snapsync
             sync_snapshot_id = create_synchronization_point
 
             source_snapshots = config.each_snapshot.sort_by(&:num)
-            target_snapshots = Snapshot.each(target_dir).sort_by(&:num)
+            target_snapshots = target.each_snapshot.sort_by(&:num)
 
             last_common_snapshot = source_snapshots.find do |s|
                 target_snapshots.find { |src| src.num == s.num }
@@ -190,14 +158,15 @@ module Snapsync
                 Snapsync.warn "no common snapshot found, will have to synchronize the first snapshot fully"
             end
 
-            source_snapshots.each do |src|
+            snapshots_to_sync = policy.filter_snapshots_to_sync(self, target, source_snapshots)
+            snapshots_to_sync.each do |src|
                 if target_snapshots.find { |s| s.num == src.num }
                     Snapsync.debug "Snapshot #{src.snapshot_dir} already present on the target"
                     last_common_snapshot = src
                     next
                 end
 
-                target_snapshot_dir = (target_dir + src.num.to_s)
+                target_snapshot_dir = (target.dir + src.num.to_s)
                 partial_marker_path = target_snapshot_dir + "snapsync-partial"
                 if target_snapshot_dir.exist?
                     if partial_marker_path.exist?
