@@ -150,7 +150,7 @@ module Snapsync
                 Snapsync.warn "no common snapshot found, will have to synchronize the first snapshot fully"
             end
 
-            snapshots_to_sync = target.sync_policy.filter_snapshots_to_sync(self, target, source_snapshots)
+            snapshots_to_sync = target.sync_policy.filter_snapshots_to_sync(target, source_snapshots)
             snapshots_to_sync.each do |src|
                 if target_snapshots.find { |s| s.num == src.num }
                     Snapsync.debug "Snapshot #{src.snapshot_dir} already present on the target"
