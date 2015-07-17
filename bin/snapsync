@@ -64,7 +64,7 @@ begin
             else
                 Pathname.new("/etc/snapper/configs/#{config}")
             end
-        snapper_configurations << [Snapsync::SnapperConfig.load(config_file), target_dir]
+        snapper_configurations = [[Snapsync::SnapperConfig.load(config_file), target_dir]]
     end
 
     snapper_configurations.each do |config, target|

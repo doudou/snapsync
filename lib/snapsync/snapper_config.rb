@@ -29,6 +29,26 @@ module Snapsync
             Snapshot.each(snapshot_dir, &block)
         end
 
+        # Create a new snapshot
+        #
+        # @return [Snapshot]
+        def create(type: 'single', description: '', user_data: Hash.new)
+            user_data = user_data.map { |k,v| "#{k}=#{v}" }.join(",")
+            snapshot_id = IO.popen(["snapper", "-c", name, "create",
+                     "--type", type,
+                     "--print-number",
+                     "--description", description,
+                     "--userdata", user_data]) do |io|
+                Integer(io.read.strip)
+            end
+            Snapshot.new(snapshot_dir + snapshot_id.to_s)
+        end
+
+        # Delete one of this configuration's snapshots
+        def delete(snapshot)
+            system("snapper", "-c", name, "delete", snapshot.num.to_s)
+        end
+
         # Create a SnapperConfig object from the data in a configuration file
         #
         # @param [#readlines] path the file

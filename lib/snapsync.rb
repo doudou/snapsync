@@ -1,5 +1,6 @@
 require 'pathname'
 require 'logging'
+require 'securerandom'
 require 'rexml/document'
 require "snapsync/version"
 require "snapsync/exceptions"
