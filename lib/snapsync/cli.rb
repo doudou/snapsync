@@ -24,12 +24,15 @@ module Snapsync
             def each_snapper_config
                 snapper_config_dir.each_entry do |config_file|
                     config_name = config_file.to_s
-                    config_file = config + config_file
+                    config_file = snapper_config_dir + config_file
                     next if !config_file.file?
                     begin
                         yield(SnapperConfig.load(config_file))
                     rescue Exception => e
                         Snapsync.warn "not processing #{config_file}: #{e.message}"
+                        e.backtrace.each do |line|
+                            Snapsync.debug "  #{line}"
+                        end
                         nil
                     end
                 end
@@ -59,10 +62,11 @@ module Snapsync
             each_snapper_config do |config|
                 target_dir = dir + config.name
                 if !target_dir.exist?
-                    target_dir.mkdir
+                    Snapsync.warn "not synchronizing #{config.name}, there are no corresponding directory in #{dir}. Call snapsync policy to create a proper target directory"
+                else
+                    target = LocalTarget.new(target_dir)
+                    LocalSync.new(config, target).sync
                 end
-                target = LocalTarget.new(target_dir)
-                LocalSync.new(config, target).sync
             end
         end
 

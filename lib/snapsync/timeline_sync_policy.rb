@@ -146,12 +146,12 @@ module Snapsync
             source_snapshots.sort_by(&:num).find_all do |s|
                 keep, reason = keep_flags.fetch(s.num, nil)
                 if keep
-                    Snapsync.info "Timeline: selected snapshot #{s.num} #{s.date.to_time}"
+                    Snapsync.debug "Timeline: selected snapshot #{s.num} #{s.date.to_time}"
                     reason.each do |r|
                         Snapsync.debug "  #{r}"
                     end
                 else
-                    Snapsync.info "Timeline: not selected snapshot #{s.num} #{s.date.to_time}"
+                    Snapsync.debug "Timeline: not selected snapshot #{s.num} #{s.date.to_time}"
                 end
 
                 keep
