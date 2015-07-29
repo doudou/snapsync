@@ -55,6 +55,7 @@ module Snapsync
         end
 
         desc 'sync-all DIR', 'synchronizes all snapper configurations into corresponding subdirectories of DIR'
+        option :autoclean, type: :boolean, default: true
         def sync_all(dir)
             handle_class_options
 
@@ -66,6 +67,12 @@ module Snapsync
                 else
                     target = LocalTarget.new(target_dir)
                     LocalSync.new(config, target).sync
+                    if options[:autoclean] && target.cleanup
+                        Snapsync.info "running cleanup"
+                        target.cleanup.cleanup(target)
+                    else
+                        Snapsync.info "#{target.sync_policy.class.name} policy set, nothing to do"
+                    end
                 end
             end
         end
