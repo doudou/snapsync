@@ -95,9 +95,11 @@ module Snapsync
 This command sets the policy used to decide which snapshots to synchronize to
 the target, and which to not synchronize.
 
-Two policy types can be used: default and timeline
+Three policy types can be used: default, last and timeline
 
-The default takes no argument. It will synchronize all snapshots present in the source, and do no cleanup
+The default policy takes no argument. It will synchronize all snapshots present in the source, and do no cleanup
+
+The last policy takes no argument. It will synchronize (and keep) only the last snapshot
 
 The timeline policy takes periods of time as argument (as e.g. day 10 or month 20). It will keep at least
 one snapshot for each period, and for the duration specified (day 10 tells to keep one snapshot per day
