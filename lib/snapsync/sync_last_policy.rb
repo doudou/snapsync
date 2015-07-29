@@ -17,7 +17,7 @@ module Snapsync
         # (see DefaultSyncPolicy#filter_snapshots_to_sync)
         def filter_snapshots_to_sync(target, snapshots)
             last = snapshots.sort_by(&:num).reverse.
-                find { |s| s.user_data['snapsync'] == target.uuid }
+                find { |s| !s.synchronization_point? }
             [last]
         end
     end

@@ -1,4 +1,9 @@
 module Snapsync
+    # Exception thrown when performing sanity checks on the values returned by
+    # the policy. Snapsync usually aborts in these cases, given how this is
+    # critical
+    class InvalidPolicy < RuntimeError; end
+
     # Default synchronization policy
     #
     # Synchronization policy objects are used by the synchronization passes to

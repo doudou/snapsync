@@ -29,6 +29,17 @@ module Snapsync
             date.to_time
         end
 
+        # Whether this snapshot is one of snapsync's synchronization points
+        def synchronization_point?
+            user_data['snapsync']
+        end
+
+        # Whether this snapshot is one of snapsync's synchronization points for
+        # the given target
+        def synchronization_point_for?(target)
+            user_data['snapsync'] == target.uuid
+        end
+
         def initialize(snapshot_dir)
             @snapshot_dir = snapshot_dir
 

@@ -94,17 +94,17 @@ module Snapsync
                 cleanup = nil
             when 'timeline'
                 sync_policy = TimelineSyncPolicy
-                cleanup = TimelineCleanup
+                cleanup = TimelineSyncPolicy
             when 'last'
                 sync_policy = SyncLastPolicy
-                cleanup = KeepLastCleanup
+                cleanup = SyncLastPolicy
             else
                 raise InvalidConfiguration, "synchronization policy #{type} does not exist"
             end
             @sync_policy = sync_policy.from_config(options)
             @cleanup =
                 if cleanup
-                    cleanup.from_config(options)
+                    Cleanup.new(cleanup.from_config(options))
                 end
         end
 
