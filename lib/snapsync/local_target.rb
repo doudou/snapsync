@@ -14,6 +14,17 @@ module Snapsync
         # The cleanup object
         attr_reader :cleanup
 
+        # Whether this target is enabled or not
+        def enabled?; @enabled end
+
+        # Enable this target, i.e. add it to the auto synchronization and
+        # cleanup commands
+        def enable; @enabled = true; self end
+
+        # Disable this target, i.e. remove it from the auto synchronization and
+        # cleanup commands
+        def disable; @enabled = false; self end
+
         class InvalidUUIDError < RuntimeError; end
         class NoUUIDError < InvalidUUIDError; end
 
@@ -50,6 +61,7 @@ module Snapsync
                 end
             config['policy']['options'] =
                 sync_policy.to_config
+            config['enabled'] = enabled?
 
             File.open(config_path, 'w') do |io|
                 io.write YAML.dump(config)
@@ -71,6 +83,8 @@ module Snapsync
                 raise InvalidUUIDError, "uuid in #{uuid_path} was expected to be 36 characters long, but is #{uuid.length}"
             end
             @uuid = uuid
+
+            @enabled = config.fetch('enabled', true)
 
             if policy_config = config['policy']
                 change_policy(policy_config['type'], policy_config['options'] || Array.new)

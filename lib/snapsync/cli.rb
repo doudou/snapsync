@@ -66,6 +66,11 @@ module Snapsync
                     Snapsync.warn "not synchronizing #{config.name}, there are no corresponding directory in #{dir}. Call snapsync policy to create a proper target directory"
                 else
                     target = LocalTarget.new(target_dir)
+                    if !target.enabled?
+                        Snapsync.warn "not synchronizing #{config.name}, it is disabled"
+                        next
+                    end
+
                     LocalSync.new(config, target).sync
                     if options[:autoclean] && target.cleanup
                         Snapsync.info "running cleanup"
