@@ -24,6 +24,25 @@ module Snapsync
         # @return [Hash<String,String>]
         attr_reader :user_data
 
+        PARTIAL_MARKER = "snapsync-partial"
+
+        def self.partial_marker_path(snapshot_dir)
+            snapshot_dir + PARTIAL_MARKER
+        end
+
+        # A file that is used to mark the snapshot has having only been
+        # partially synchronized
+        #
+        # @return [Pathname]
+        def partial_marker_path
+            self.class.partial_marker_path(snapshot_dir)
+        end
+
+        # Whether this snapshot has only been partially synchronized
+        def partial?
+            partial_marker_path.exist?
+        end
+
         # This snapshot's reference time
         def to_time
             date.to_time
@@ -84,8 +103,8 @@ module Snapsync
         # The directory is supposed to be maintained in a snapper-compatible
         # foramt, meaning that the snapshot directory name must be the
         # snapshot's number
-        def self.each(snapshot_dir)
-            return enum_for(__method__, snapshot_dir) if !block_given?
+        def self.each(snapshot_dir, with_partial: false)
+            return enum_for(__method__, snapshot_dir, with_partial: with_partial) if !block_given?
             snapshot_dir.each_child do |path|
                 if path.directory? && path.basename.to_s =~ /^\d+$/
                     begin
@@ -96,6 +115,8 @@ module Snapsync
                     if snapshot
                         if snapshot.num != Integer(path.basename.to_s)
                             Snapsync.warn "ignored #{path} in #{self}: the snapshot reports num=#{snapshot.num} but its directory is called #{path.basename}"
+                        elsif !with_partial && snapshot.partial?
+                            Snapsync.warn "ignored #{path} in #{self}: this is a partial snapshot"
                         else
                             yield snapshot
                         end

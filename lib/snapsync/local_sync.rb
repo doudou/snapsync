@@ -20,14 +20,15 @@ module Snapsync
                 user_data: Hash['important' => 'yes', 'snapsync' => target.uuid])
         end
 
-        def remove_synchronization_points(except: nil)
-            except_num = if except then except.num end
-
-            to_delete = config.each_snapshot.find_all do |snapshot|
-                (snapshot.num != except_num) &&
-                    (snapshot.user_data['snapsync'] == target.uuid)
+        def remove_synchronization_points(except_last: true)
+            synchronization_points = config.each_snapshot.find_all do |snapshot|
+                snapshot.synchronization_point_for?(target)
             end
-            to_delete.each do |snapshot|
+            if except_last
+                synchronization_points = synchronization_points.sort_by(&:num)
+                synchronization_points.pop
+            end
+            synchronization_points.each do |snapshot|
                 config.delete(snapshot)
             end
         end
@@ -58,6 +59,35 @@ module Snapsync
             end
             print "\r#{" " * longest_message_length}\r"
             counter
+        end
+
+        def synchronize_snapshot(target_snapshot_dir, src, parent: nil)
+            partial_marker_path = Snapshot.partial_marker_path(target_snapshot_dir)
+
+            # Verify first if the snapshot is already present and/or partially
+            # synchronized
+            begin
+                snapshot = Snapshot.new(target_snapshot_dir)
+                if snapshot.partial?
+                    Snapsync.warn "target snapshot directory #{target_snapshot_dir} looks like an aborted snapsync synchronization, I will attempt to refresh it"
+                else
+                    return true
+                end
+            rescue InvalidSnapshot
+                if target_snapshot_dir.exist?
+                    Snapsync.warn "target snapshot directory #{target_snapshot_dir} already exists, but does not seem to be a valid snapper snapshot. I will attempt to refresh it"
+                else
+                    target_snapshot_dir.mkdir
+                end
+                FileUtils.touch(partial_marker_path.to_s)
+            end
+
+            if copy_snapshot(target_snapshot_dir, src, parent: parent)
+                partial_marker_path.unlink
+                IO.popen(["sudo", "btrfs", "filesystem", "sync", target_snapshot_dir.to_s, err: '/dev/null']).read
+                Snapsync.info "Successfully synchronized #{src.snapshot_dir}"
+                true
+            end
         end
 
         def copy_snapshot(target_snapshot_dir, src, parent: nil)
@@ -123,6 +153,7 @@ module Snapsync
         ensure
             if !success
                 Snapsync.warn "Failed to synchronize #{src.snapshot_dir}, deleting target directory"
+                Snapsync.warn "(#{$!} #{$!.backtrace})"
                 subvolume_dir = target_snapshot_dir + "snapshot"
                 if subvolume_dir.directory?
                     IO.popen(["sudo", "btrfs", "subvolume", "delete", subvolume_dir.to_s, err: '/dev/null']).read
@@ -138,9 +169,16 @@ module Snapsync
             # synchronization point
             #
             # We remove old synchronization points on successful synchronization
-            sync_snapshot_id = create_synchronization_point
-
             source_snapshots = config.each_snapshot.sort_by(&:num)
+            sync_snapshot = source_snapshots.reverse.find do |snapshot|
+                if snapshot.synchronization_point_for?(target)
+                    true
+                elsif !snapshot.synchronization_point?
+                    break
+                end
+            end
+            sync_snapshot ||= create_synchronization_point
+
             target_snapshots = target.each_snapshot.sort_by(&:num)
 
             last_common_snapshot = source_snapshots.find do |s|
@@ -152,32 +190,16 @@ module Snapsync
 
             snapshots_to_sync = target.sync_policy.filter_snapshots_to_sync(target, source_snapshots)
             snapshots_to_sync.each do |src|
-                if target_snapshots.find { |s| s.num == src.num }
-                    Snapsync.debug "Snapshot #{src.snapshot_dir} already present on the target"
-                    last_common_snapshot = src
-                    next
-                end
-
-                target_snapshot_dir = (target.dir + src.num.to_s)
-                partial_marker_path = target_snapshot_dir + "snapsync-partial"
-                if target_snapshot_dir.exist?
-                    if partial_marker_path.exist?
-                        Snapsync.warn "target snapshot directory #{target_snapshot_dir} looks like an aborted snapsync synchronization, I will attempt to refresh it"
-                    else
-                        Snapsync.warn "target snapshot directory #{target_snapshot_dir} already exists, but does not seem to be a valid snapper snapshot. I will attempt to refresh it"
-                    end
-                else
-                    target_snapshot_dir.mkdir
-                    FileUtils.touch(partial_marker_path.to_s)
-                end
-
-                if copy_snapshot(target_snapshot_dir, src, parent: last_common_snapshot)
-                    partial_marker_path.unlink
+                if synchronize_snapshot(target.dir + src.num.to_s, src, parent: last_common_snapshot)
                     last_common_snapshot = src
                 end
             end
 
-            remove_synchronization_points(except: sync_snapshot_id)
+            if synchronize_snapshot(target.dir + sync_snapshot.num.to_s, sync_snapshot, parent: last_common_snapshot)
+                Snapsync.debug "successfully copied last synchronization point #{sync_snapshot.num}, removing old ones"
+                remove_synchronization_points
+            end
+
             last_common_snapshot
         end
 
