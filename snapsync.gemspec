@@ -28,6 +28,8 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency 'logging'
+  spec.add_dependency 'concurrent-ruby'
+  spec.add_dependency 'ruby-dbus'
   spec.add_dependency 'thor'
 
   spec.add_development_dependency "bundler", "~> 1.10"
