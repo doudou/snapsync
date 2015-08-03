@@ -28,6 +28,9 @@ module Snapsync
                     next if !config_file.file?
                     begin
                         yield(SnapperConfig.load(config_file))
+                    rescue Interrupt
+                        Snapsync.info "Interrupted by user"
+                        raise
                     rescue Exception => e
                         Snapsync.warn "not processing #{config_file}: #{e.message}"
                         e.backtrace.each do |line|
