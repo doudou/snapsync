@@ -153,7 +153,6 @@ module Snapsync
         ensure
             if !success
                 Snapsync.warn "Failed to synchronize #{src.snapshot_dir}, deleting target directory"
-                Snapsync.warn "(#{$!} #{$!.backtrace})"
                 subvolume_dir = target_snapshot_dir + "snapshot"
                 if subvolume_dir.directory?
                     IO.popen(["sudo", "btrfs", "subvolume", "delete", subvolume_dir.to_s, err: '/dev/null']).read
