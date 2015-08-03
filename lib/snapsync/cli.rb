@@ -72,11 +72,13 @@ module Snapsync
                     end
 
                     LocalSync.new(config, target).sync
-                    if options[:autoclean] && target.cleanup
-                        Snapsync.info "running cleanup"
-                        target.cleanup.cleanup(target)
-                    else
-                        Snapsync.info "#{target.sync_policy.class.name} policy set, nothing to do"
+                    if options[:autoclean] 
+                        if target.cleanup
+                            Snapsync.info "running cleanup"
+                            target.cleanup.cleanup(target)
+                        else
+                            Snapsync.info "#{target.sync_policy.class.name} policy set, no cleanup to do"
+                        end
                     end
                 end
             end
