@@ -140,14 +140,6 @@ for 10 days). snapsync understands the following period names: year month day ho
             target.write_config
         end
 
-        desc 'info DIR', 'display information about the given snapsync target'
-        def info(dir)
-            handle_class_options
-            target = LocalTarget.new(Pathname.new(dir))
-            puts "UUID: #{target.uuid}"
-            pp target.sync_policy
-        end
-
         desc 'destroy DIR', 'destroys a snapsync target'
         long_desc <<-EOD
 While it can easily be done manually, this command makes sure that the snapshots are properly deleted
