@@ -84,7 +84,7 @@ module Snapsync
 
             if copy_snapshot(target_snapshot_dir, src, parent: parent)
                 partial_marker_path.unlink
-                IO.popen(["sudo", "btrfs", "filesystem", "sync", target_snapshot_dir.to_s, err: '/dev/null']).read
+                IO.popen(["btrfs", "filesystem", "sync", target_snapshot_dir.to_s, err: '/dev/null']).read
                 Snapsync.info "Successfully synchronized #{src.snapshot_dir}"
                 true
             end
@@ -114,9 +114,9 @@ module Snapsync
             receive_status, send_status = nil
             err_send_pipe_r, err_send_pipe_w = IO.pipe
             err_receive_pipe_r, err_receive_pipe_w = IO.pipe
-            IO.popen(['sudo', 'btrfs', 'send', *parent_opt, src.subvolume_dir.to_s, err: err_send_pipe_w]) do |send_io|
+            IO.popen(['btrfs', 'send', *parent_opt, src.subvolume_dir.to_s, err: err_send_pipe_w]) do |send_io|
                 err_send_pipe_w.close
-                IO.popen(['sudo', 'btrfs', 'receive', target_snapshot_dir.to_s, err: err_receive_pipe_w, out: '/dev/null'], 'w') do |receive_io|
+                IO.popen(['btrfs', 'receive', target_snapshot_dir.to_s, err: err_receive_pipe_w, out: '/dev/null'], 'w') do |receive_io|
                     err_receive_pipe_w.close
                     receive_io.sync = true
                     bytes_transferred = copy_stream(send_io, receive_io, estimated_size: estimated_size)
@@ -142,7 +142,7 @@ module Snapsync
 
             if success
                 Snapsync.info "Flushing data to disk"
-                IO.popen(["sudo", "btrfs", "filesystem", "sync", target_snapshot_dir.to_s, err: '/dev/null']).read
+                IO.popen(["btrfs", "filesystem", "sync", target_snapshot_dir.to_s, err: '/dev/null']).read
                 duration = Time.now - start
                 rate = bytes_transferred / duration
                 Snapsync.info "Transferred #{human_readable_size(bytes_transferred)} in #{human_readable_time(duration)} (#{human_readable_size(rate)}/s)"
@@ -155,7 +155,7 @@ module Snapsync
                 Snapsync.warn "Failed to synchronize #{src.snapshot_dir}, deleting target directory"
                 subvolume_dir = target_snapshot_dir + "snapshot"
                 if subvolume_dir.directory?
-                    IO.popen(["sudo", "btrfs", "subvolume", "delete", subvolume_dir.to_s, err: '/dev/null']).read
+                    IO.popen(["btrfs", "subvolume", "delete", subvolume_dir.to_s, err: '/dev/null']).read
                 end
                 target_snapshot_dir.rmtree
             end
