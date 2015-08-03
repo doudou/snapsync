@@ -46,7 +46,10 @@ running)
 
     $ snapsync auto-sync
 
-to achieve the same result.
+to achieve the same result. The actions taken by the systemd-managed service can
+be followed with
+
+    $ journalctl -f -u snapsync.service
 
 ## Synchronization and cleanup policies
 
