@@ -29,15 +29,7 @@ module Snapsync
         # @return [Array<Snapshot>] the snapshots that should be copied
         def filter_snapshots_to_sync(target, snapshots)
             # Filter out any snapsync-generated snapshot
-            user_snapshots = snapshots.find_all do |s|
-                !s.user_data['snapsync']
-            end
-            # And then add only the latest snapsync-generated snapshot *for the
-            # requested target*
-            synchronization_point = snapshots.sort_by(&:num).reverse.
-                find { |s| s.user_data['snapsync'] == target.uuid }
-
-            user_snapshots + [synchronization_point]
+            snapshots.find_all { |s| !s.synchronization_point? }
         end
 
         # Pretty prints this policy
