@@ -78,7 +78,7 @@ module Snapsync
         # This is an estimate of the size required to send this snapshot using
         # the given snapshot as parent
         def size_diff_from(snapshot)
-            info = `sudo btrfs subvolume show '#{snapshot.subvolume_dir}'`
+            info = IO.popen(['btrfs', 'subvolume', 'show', snapshot.subvolume_dir.to_s, err: '/dev/null']).read
             info =~ /Generation[^:]*:\s+(\d+)/
             size_diff_from_gen(Integer($1))
         end
@@ -89,7 +89,7 @@ module Snapsync
         end
 
         def size_diff_from_gen(gen)
-            new = `sudo btrfs subvolume find-new '#{subvolume_dir}' #{gen}`
+            new = IO.popen(['btrfs', 'subvolume', 'find-new', subvolume_dir.to_s, gen.to_s, err: '/dev/null']).read
             new.split("\n").inject(0) do |size, line|
                 if line.strip =~ /len (\d+)/
                     size + Integer($1)

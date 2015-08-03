@@ -135,13 +135,13 @@ module Snapsync
             Snapsync.info "Removing snapshot #{s.num} #{s.date.to_time} at #{s.subvolume_dir}"
             return if dry_run
 
-            IO.popen(["sudo", "btrfs", "subvolume", "delete", s.subvolume_dir.to_s, err: '/dev/null']) do |io|
+            IO.popen(["btrfs", "subvolume", "delete", s.subvolume_dir.to_s, err: '/dev/null']) do |io|
                 io.read
             end
             if $?.success?
                 s.snapshot_dir.rmtree
                 Snapsync.info "Flushing data to disk"
-                IO.popen(["sudo", "btrfs", "filesystem", "sync", s.snapshot_dir.to_s, err: '/dev/null']).read
+                IO.popen(["btrfs", "filesystem", "sync", s.snapshot_dir.to_s, err: '/dev/null']).read
             else
                 Snapsync.warn "failed to remove snapshot at #{s.subvolume_dir}, keeping the rest of the snapshot"
             end
