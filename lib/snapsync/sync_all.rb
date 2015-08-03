@@ -51,13 +51,13 @@ module Snapsync
                     LocalSync.new(config, target).sync
                     if should_autoclean_target?(target)
                         if target.cleanup
-                            Snapsync.info "running cleanup"
+                            Snapsync.info "running cleanup for #{config.name}"
                             target.cleanup.cleanup(target)
                         else
-                            Snapsync.info "#{target.sync_policy.class.name} policy set, no cleanup to do"
+                            Snapsync.info "#{target.sync_policy.class.name} policy set, no cleanup to do for #{config.name}"
                         end
                     else
-                        Snapsync.info "autoclean not set"
+                        Snapsync.info "autoclean not set on #{config.name}"
                     end
                 end
             end
