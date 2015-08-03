@@ -3,6 +3,9 @@ require 'logging'
 require 'pp'
 require 'securerandom'
 require 'rexml/document'
+require 'dbus'
+require 'concurrent'
+
 require "snapsync/version"
 require "snapsync/exceptions"
 require "snapsync/snapper_config"
@@ -14,6 +17,9 @@ require 'snapsync/cleanup'
 require 'snapsync/default_sync_policy'
 require 'snapsync/timeline_sync_policy'
 require 'snapsync/sync_last_policy'
+
+require 'snapsync/partitions_monitor'
+require 'snapsync/auto_sync'
 
 module Logging
     module Installer
