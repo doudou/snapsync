@@ -43,6 +43,7 @@ module Snapsync
                 @uuid = SecureRandom.uuid
                 @sync_policy = DefaultSyncPolicy.new
                 @cleanup = nil
+                @enabled = true
             end
             write_config
         end
