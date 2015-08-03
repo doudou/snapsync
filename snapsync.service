@@ -1,0 +1,10 @@
+[Unit]
+Description=service that synchronizes snapper snapshots to other media
+Wants=udisks2.service
+
+[Service]
+Type=simple
+ExecStart=/opt/snapsync/bin/snapsync auto-sync
+
+[Install]
+WantedBy=default.target
