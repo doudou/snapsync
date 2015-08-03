@@ -29,6 +29,32 @@ module Snapsync
             Snapshot.each(snapshot_dir, &block)
         end
 
+        def self.default_config_dir
+            Pathname.new('/etc/snapper/configs')
+        end
+
+        # Enumerates the valid snapper configurations present in a directory
+        def self.each_in_dir(path = default_config_dir)
+            path.each_entry do |config_file|
+                config_name = config_file.to_s
+                config_file = path + config_file
+                next if !config_file.file?
+                begin
+                    config = SnapperConfig.load(config_file)
+                rescue Interrupt
+                    raise
+                rescue Exception => e
+                    Snapsync.warn "cannot load #{config_file}: #{e.message}"
+                    e.backtrace.each do |line|
+                        Snapsync.debug "  #{line}"
+                    end
+                    next
+                end
+
+                yield(config)
+            end
+        end
+
         # Create a new snapshot
         #
         # @return [Snapshot]

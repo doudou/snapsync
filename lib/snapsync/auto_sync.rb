@@ -11,7 +11,7 @@ module Snapsync
         attr_reader :targets
         attr_reader :partitions
 
-        def initialize(config_dir)
+        def initialize(config_dir = SnapperConfig.default_config_dir)
             @config_dir = config_dir
             @targets = Hash.new
             @partitions = PartitionsMonitor.new
@@ -36,7 +36,7 @@ module Snapsync
             partitions.monitor_for(target.partition_uuid)
         end
 
-        def run(cli, period: 60)
+        def run(period: 60)
             while true
                 partitions.poll
                 partitions.known_partitions.each do |uuid, fs|
@@ -58,7 +58,8 @@ module Snapsync
 
                         full_path = mp + t.path
                         Snapsync.info "sync-all on #{mp + t.path} (partition #{t.partition_uuid})"
-                        cli.sync_all(mp + t.path)
+                        op = SyncAll.new(mp + t.path, config_dir: config_dir)
+                        op.run
                         if mounted
                             fs.Unmount([])
                         end

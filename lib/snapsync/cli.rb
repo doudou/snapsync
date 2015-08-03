@@ -6,39 +6,15 @@ module Snapsync
         class_option :debug, type: :boolean, default: false
 
         no_commands do
-            def snapper_config_dir
-                Pathname.new("/etc/snapper/configs")
-            end
-
             def config_from_name(name)
                 path = Pathname.new(name)
                 if !path.exist?
-                    path = snapper_config_dir + path
+                    path = SnapperConfig.default_config_dir + path
                     if !path.exist?
                         raise ArgumentError, "cannot find any snapper configuration called #{name}"
                     end
                 end
                 SnapperConfig.load(path)
-            end
-
-            def each_snapper_config
-                snapper_config_dir.each_entry do |config_file|
-                    config_name = config_file.to_s
-                    config_file = snapper_config_dir + config_file
-                    next if !config_file.file?
-                    begin
-                        yield(SnapperConfig.load(config_file))
-                    rescue Interrupt
-                        Snapsync.info "Interrupted by user"
-                        raise
-                    rescue Exception => e
-                        Snapsync.warn "not processing #{config_file}: #{e.message}"
-                        e.backtrace.each do |line|
-                            Snapsync.debug "  #{line}"
-                        end
-                        nil
-                    end
-                end
             end
 
             def handle_class_options
@@ -58,33 +34,14 @@ module Snapsync
         end
 
         desc 'sync-all DIR', 'synchronizes all snapper configurations into corresponding subdirectories of DIR'
-        option :autoclean, type: :boolean, default: true
+        option :autoclean, type: :boolean, default: nil,
+            desc: 'whether the target should be cleaned of obsolete snapshots',
+            long_desc: "The default is to use the value specified in the target's configuration file. This command line option allows to override the default"
         def sync_all(dir)
             handle_class_options
 
-            dir = Pathname.new(dir)
-            each_snapper_config do |config|
-                target_dir = dir + config.name
-                if !target_dir.exist?
-                    Snapsync.warn "not synchronizing #{config.name}, there are no corresponding directory in #{dir}. Call snapsync policy to create a proper target directory"
-                else
-                    target = LocalTarget.new(target_dir)
-                    if !target.enabled?
-                        Snapsync.warn "not synchronizing #{config.name}, it is disabled"
-                        next
-                    end
-
-                    LocalSync.new(config, target).sync
-                    if options[:autoclean] 
-                        if target.cleanup
-                            Snapsync.info "running cleanup"
-                            target.cleanup.cleanup(target)
-                        else
-                            Snapsync.info "#{target.sync_policy.class.name} policy set, no cleanup to do"
-                        end
-                    end
-                end
-            end
+            op = SyncAll.new(dir, config_dir: SnapperConfig.default_config_dir, autoclean: options[:autoclean])
+            op.run
         end
 
         desc 'cleanup CONFIG DIR', 'cleans up the snapsync target DIR based on the policy set by the policy command'
@@ -155,13 +112,13 @@ While it can easily be done manually, this command makes sure that the snapshots
             target_dir.rmtree
         end
 
-        desc "auto", "automatic synchronization"
-        def auto
-            require 'snapsync/async'
-            require 'snapsync/async/auto'
-            auto = Async::Auto.new(snapper_config_dir)
-            auto.load_config(Pathname.new('/etc/snapsync.conf'))
-            auto.run(self)
+        desc "auto-sync", "automatic synchronization"
+        option :config_file, desc: "path to the config file (defaults to /etc/snapsync.conf)",
+            default: '/etc/snapsync.conf'
+        def auto_sync
+            auto = AutoSync.new(SnapperConfig.default_config_dir)
+            auto.load_config(Pathname.new(options[:config_file]))
+            auto.run
         end
     end
 end

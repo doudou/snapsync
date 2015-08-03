@@ -25,6 +25,11 @@ module Snapsync
         # cleanup commands
         def disable; @enabled = false; self end
 
+        # Whether the target should be autocleaned on synchronization
+        #
+        # Defaults to true
+        def autoclean?; !!@autoclean end
+
         class InvalidUUIDError < RuntimeError; end
         class NoUUIDError < InvalidUUIDError; end
 
@@ -44,6 +49,7 @@ module Snapsync
                 @sync_policy = DefaultSyncPolicy.new
                 @cleanup = nil
                 @enabled = true
+                @autoclean = true
             end
             write_config
         end
@@ -63,6 +69,7 @@ module Snapsync
             config['policy']['options'] =
                 sync_policy.to_config
             config['enabled'] = enabled?
+            config['autoclean'] = autoclean?
 
             File.open(config_path, 'w') do |io|
                 io.write YAML.dump(config)
@@ -86,6 +93,7 @@ module Snapsync
             @uuid = uuid
 
             @enabled = config.fetch('enabled', true)
+            @autoclean = config.fetch('autoclean', true)
 
             if policy_config = config['policy']
                 change_policy(policy_config['type'], policy_config['options'] || Array.new)
