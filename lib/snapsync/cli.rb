@@ -129,7 +129,7 @@ for 10 days). snapsync understands the following period names: year month day ho
 
             dir = Pathname.new(dir)
             if !dir.exist?
-                dir.mkdir
+                dir.mkpath
             end
 
             target = LocalTarget.new(dir)
