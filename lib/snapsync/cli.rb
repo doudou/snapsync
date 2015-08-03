@@ -97,6 +97,18 @@ module Snapsync
             end
         end
 
+        desc 'init DIR', 'creates a synchronization target with a default policy'
+        def init(dir)
+            dir = Pathname.new(dir)
+            if !dir.exist?
+                dir.mkpath
+            end
+
+            target = LocalTarget.new(dir)
+            target.change_policy('default', Hash.new)
+            target.write_config
+        end
+
         desc 'policy DIR TYPE [OPTIONS]', 'sets the synchronization and cleanup policy for the given target'
         long_desc <<-EOD
 This command sets the policy used to decide which snapshots to synchronize to
