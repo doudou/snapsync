@@ -145,6 +145,15 @@ While it can easily be done manually, this command makes sure that the snapshots
             end
             target_dir.rmtree
         end
+
+        desc "auto", "automatic synchronization"
+        def auto
+            require 'snapsync/async'
+            require 'snapsync/async/auto'
+            auto = Async::Auto.new(snapper_config_dir)
+            auto.load_config(Pathname.new('/etc/snapsync.conf'))
+            auto.run(self)
+        end
     end
 end
 
