@@ -36,7 +36,7 @@ first and do
 This will create snapsync targets for each of the snapper configurations
 currently present on the system (i.e. if there is a 'home' and 'root'
 configurations, it will create /path/to/the/drive/snapsync/root and
-/path/to/the/drive/snapsync/auto). The 'default' synchronization policy is used
+/path/to/the/drive/snapsync/home). The 'default' synchronization policy is used
 (see below for other options).
 
 If you use systemd, the background systemd job will from now on synchronize the
@@ -73,11 +73,16 @@ snapsync's automated behaviour to that effect.
 
 ## Development
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+To develop snapsync, clone this repository and install the dependencies
+
+   $ git clone https://github.com/doudou/snapsync
+   $ cd snapsync
+   $ bundler install --path=vendor/
+   $ sudo bundler exec bin/snapsync
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/snapsync.
+Bug reports and pull requests are welcome on GitHub at https://github.com/doudou/snapsync.
 
 ## License
 
