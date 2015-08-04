@@ -5,7 +5,7 @@ module Snapsync
     # partition availability, and will run sync-all on each (declared) targets
     # when they are available, optionally auto-mounting them
     class AutoSync
-        AutoSyncTarget = Struct.new :partition_uuid, :path, :automount
+        AutoSyncTarget = Struct.new :partition_uuid, :path, :automount, :name
 
         attr_reader :config_dir
         attr_reader :targets
@@ -26,7 +26,27 @@ module Snapsync
             conf.each do |hash|
                 target = AutoSyncTarget.new
                 hash.each { |k, v| target[k] = v }
+                target.path = Pathname.new(target.path)
                 add(target)
+            end
+        end
+
+        def write_config(path)
+            data = each_target.map do |target|
+                Hash['partition_uuid' => target.partition_uuid,
+                     'path' => target.path.to_s,
+                     'automount' => !!target.automount,
+                     'name' => target.name]
+            end
+            File.open(path, 'w') do |io|
+                YAML.dump(data, io)
+            end
+        end
+
+        def each_target
+            return enum_for(__method__) if !block_given?
+            targets.each_value do |targets|
+                targets.each { |t| yield(t) }
             end
         end
 
@@ -34,6 +54,15 @@ module Snapsync
             targets[target.partition_uuid] ||= Array.new
             targets[target.partition_uuid] << target
             partitions.monitor_for(target.partition_uuid)
+        end
+
+        def remove(**matcher)
+            targets.delete_if do |uuid, list|
+                list.delete_if do |t|
+                    matcher.all? { |k, v| t[k] == v }
+                end
+                list.empty?
+            end
         end
 
         def run(period: 60)

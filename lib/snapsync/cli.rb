@@ -57,19 +57,96 @@ module Snapsync
             end
         end
 
-        desc 'init DIR', 'creates a synchronization target with a default policy'
-        def init(dir)
+        desc 'init NAME DIR [POLICY]', 'creates a synchronization target, optionally specifying the synchronization and cleanup policy'
+        long_desc <<-EOD
+By default, the default policy is used. To change this, provide additional
+arguments as would be expected by the policy subcommand. Run snapsync help
+policy for more information
+        EOD
+        option :all, type: :boolean, default: true,
+            desc: "if true (the default), create one snapsync target per snapper configuration under DIR, otherwise, initialize only one target directly in DIR"
+        option :auto, type: :boolean, default: true,
+            desc: "if true (the default), add the newly created target to auto-sync"
+        option :automount, type: :boolean, default: true,
+            desc: 'whether the supporting partition should be auto-mounted by snapsync when needed or not (the default is yes). Only useful if --no-auto has not been provided on the command line.'
+        def init(name, dir, *policy)
             dir = Pathname.new(dir)
-            if !dir.exist?
-                dir.mkpath
+
+            if policy.empty?
+                policy = ['default', Array.new]
+            elsif policy.size == 1
+                policy << Array.new
             end
 
-            target = LocalTarget.new(dir)
-            target.change_policy('default', Hash.new)
-            target.write_config
+            dirs = Array.new
+            if options[:all]
+                SnapperConfig.each_in_dir do |config|
+                    dirs << dir + config.name
+                end
+            else
+                dirs << dir
+            end
+
+            dirs.each do |path|
+                begin
+                    LocalTarget.new(path, create_if_needed: false)
+                    Snapsync.info "#{path} was already initialized"
+                rescue ArgumentError, LocalTarget::NoUUIDError
+                    path.mkpath
+                    target = LocalTarget.new(path)
+                    target.change_policy(*policy)
+                    target.write_config
+                    Snapsync.info "initialized #{path} as a snapsync target"
+                end
+            end
+
+            if options[:auto]
+                if !options[:all]
+                    Snapsync.warn "cannot use --auto without --all"
+                else
+                    auto_add(name, dir)
+                end
+            end
         end
 
-        desc 'policy DIR TYPE [OPTIONS]', 'sets the synchronization and cleanup policy for the given target'
+        desc 'auto-add NAME DIR', "add DIR to the set of targets for auto-sync"
+        option :automount, type: :boolean, default: true,
+            desc: 'whether the supporting partition should be auto-mounted by snapsync when needed or not (the default is yes)'
+        def auto_add(name, dir)
+            partitions = PartitionsMonitor.new
+            uuid, relative = partitions.partition_of(Pathname.new(dir))
+
+            conf_path = Pathname.new('/etc/snapsync.conf')
+
+            autosync = AutoSync.new
+            autosync.load_config(conf_path)
+            exists = autosync.each_target.find do |t|
+                t.partition_uuid == uuid && t.path.cleanpath == relative.cleanpath
+            end
+            if exists
+                if exists.automount == options[:automount]
+                    Snapsync.info "already exists under the name #{exists.name}"
+                else
+                    Snapsync.info "already exists under the name #{exists.name} but with a different automount flag, changing"
+                    exists.automount = options[:automount]
+                end
+                exists.name ||= name
+            else
+                autosync.add AutoSync::AutoSyncTarget.new(uuid, relative, options[:automount], name)
+            end
+            autosync.write_config(conf_path)
+        end
+
+        desc 'auto-remove NAME', "remove a target from auto-sync by name"
+        def auto_remove(name)
+            conf_path = Pathname.new('/etc/snapsync.conf')
+            autosync = AutoSync.new
+            autosync.load_config(conf_path)
+            autosync.remove(name: name)
+            autosync.write_config(conf_path)
+        end
+
+        desc 'policy DIR TYPE [OPTIONS]', 'sets the synchronization and cleanup policy for the given target or targets'
         long_desc <<-EOD
 This command sets the policy used to decide which snapshots to synchronize to
 the target, and which to not synchronize.

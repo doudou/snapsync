@@ -28,6 +28,28 @@ module Snapsync
             monitored_partitions << partition_uuid.to_str
         end
 
+        def partition_of(dir)
+            rel = Pathname.new("")
+            while !dir.mountpoint?
+                rel = dir.basename + rel
+                dir = dir.dirname
+            end
+
+            each_partition_with_filesystem do |name, dev|
+                partition = dev['org.freedesktop.UDisks2.Block']
+                uuid = partition['IdUUID']
+
+                fs = dev['org.freedesktop.UDisks2.Filesystem']
+                mount_points = fs['MountPoints'].map do |str|
+                    str[0..-2].pack("U*")
+                end
+                if mount_points.include?(dir.to_s)
+                    return uuid, rel
+                end
+            end
+            nil
+        end
+
         def dirty!
             dirty.set
         end
