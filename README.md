@@ -71,6 +71,12 @@ provided by auto-sync, run 'snapsync' without arguments to get all the
 possibilities. Targets have configuration files that allow to fine-tune
 snapsync's automated behaviour to that effect.
 
+## Future development
+
+The main two functionalities that I plan to add to snapsync are having a
+per-session service that provides notifications of what snapsync is doing, and
+remote backup (through e.g. SSH)
+
 ## Development
 
 To develop snapsync, clone this repository and install the dependencies
