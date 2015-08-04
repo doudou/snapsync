@@ -74,7 +74,12 @@ module Snapsync
                         if !mp
                             if t.automount
                                 Snapsync.info "partition #{t.partition_uuid} is present, but not mounted, automounting"
-                                mp = fs.Mount([]).first
+                                begin
+                                    mp = fs.Mount([]).first
+                                rescue Exception => e
+                                    Snapsync.warn "failed to mount, ignoring this target"
+                                    next
+                                end
                                 mp = Pathname.new(mp)
                                 mounted = true
                             else
