@@ -60,8 +60,8 @@ module Snapsync
                 end
             elsif period == :month
                 count.times do
-                    timeline << begining_of_month.to_time
-                    begining_of_month = begining_of_month.prev_month
+                    timeline << beginning_of_month.to_time
+                    beginning_of_month = beginning_of_month.prev_month
                 end
             elsif period == :week
                 count.times do
