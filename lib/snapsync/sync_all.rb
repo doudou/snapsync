@@ -53,8 +53,17 @@ module Snapsync
                 end
                 begin
                     Sync.new(config, target, autoclean: autoclean?).run
+                rescue Interrupt
+                    raise
                 rescue Exception => e
                     Snapsync.warn "failed to synchronization #{config.name} on #{target.dir}"
+                    PP.pp(e, buffer = String.new)
+                    buffer.each_line do |line|
+                        Snapsync.warn "  #{line}"
+                    end
+                    e.backtrace.each do |line|
+                        Snapsync.debug "  #{line}"
+                    end
                 end
             end
         end

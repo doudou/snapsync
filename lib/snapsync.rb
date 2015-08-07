@@ -8,6 +8,7 @@ require 'concurrent'
 
 require "snapsync/version"
 require "snapsync/exceptions"
+require 'snapsync/btrfs'
 require "snapsync/snapper_config"
 require "snapsync/snapshot"
 require "snapsync/local_target"

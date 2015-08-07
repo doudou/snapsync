@@ -1,3 +1,7 @@
 #! /usr/bin/env ruby
 require 'snapsync/cli'
-Snapsync::CLI.start(ARGV)
+begin
+    Snapsync::CLI.start(ARGV)
+rescue Interrupt
+    Snapsync.info "Interrupted by user"
+end

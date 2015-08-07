@@ -111,54 +111,33 @@ module Snapsync
 
             start = Time.now
             bytes_transferred = nil
-            receive_status, send_status = nil
-            err_send_pipe_r, err_send_pipe_w = IO.pipe
-            err_receive_pipe_r, err_receive_pipe_w = IO.pipe
-            IO.popen(['btrfs', 'send', *parent_opt, src.subvolume_dir.to_s, err: err_send_pipe_w]) do |send_io|
-                err_send_pipe_w.close
-                IO.popen(['btrfs', 'receive', target_snapshot_dir.to_s, err: err_receive_pipe_w, out: '/dev/null'], 'w') do |receive_io|
-                    err_receive_pipe_w.close
-                    receive_io.sync = true
-                    bytes_transferred = copy_stream(send_io, receive_io, estimated_size: estimated_size)
+            bytes_transferred =
+                Btrfs.popen('send', *parent_opt, src.subvolume_dir.to_s) do |send_io|
+                    Btrfs.popen('receive', target_snapshot_dir.to_s, mode: 'w', out: '/dev/null') do |receive_io|
+                        receive_io.sync = true
+                        copy_stream(send_io, receive_io, estimated_size: estimated_size)
+                    end
                 end
-                receive_status = $?
-            end
-            send_status = $?
 
-            success = (receive_status.success? && send_status.success?)
-            if !send_status.success?
-                Snapsync.warn "btrfs send reported an error"
-                err_send_pipe_w.readlines.each do |line|
-                    Snapsync.warn "  #{line.chomp}"
-                end
-            end
+            Snapsync.info "Flushing data to disk"
+            Btrfs.run("filesystem", "sync", target_snapshot_dir.to_s)
+            duration = Time.now - start
+            rate = bytes_transferred / duration
+            Snapsync.info "Transferred #{human_readable_size(bytes_transferred)} in #{human_readable_time(duration)} (#{human_readable_size(rate)}/s)"
+            Snapsync.info "Successfully synchronized #{src.snapshot_dir}"
+            true
 
-            if !receive_status.success?
-                Snapsync.warn "btrfs receive reported an error"
-                err_receive_pipe_w.readlines.each do |line|
-                    Snapsync.warn "  #{line.chomp}"
-                end
+        rescue Exception => e
+            Snapsync.warn "Failed to synchronize #{src.snapshot_dir}, deleting target directory"
+            subvolume_dir = target_snapshot_dir + "snapshot"
+            if subvolume_dir.directory?
+                Btrfs.run("subvolume", "delete", subvolume_dir.to_s)
             end
-
-            if success
-                Snapsync.info "Flushing data to disk"
-                IO.popen(["btrfs", "filesystem", "sync", target_snapshot_dir.to_s, err: '/dev/null']).read
-                duration = Time.now - start
-                rate = bytes_transferred / duration
-                Snapsync.info "Transferred #{human_readable_size(bytes_transferred)} in #{human_readable_time(duration)} (#{human_readable_size(rate)}/s)"
-                Snapsync.info "Successfully synchronized #{src.snapshot_dir}"
-                true
-            end
-
-        ensure
-            if !success
-                Snapsync.warn "Failed to synchronize #{src.snapshot_dir}, deleting target directory"
-                subvolume_dir = target_snapshot_dir + "snapshot"
-                if subvolume_dir.directory?
-                    IO.popen(["btrfs", "subvolume", "delete", subvolume_dir.to_s, err: '/dev/null']).read
-                end
+            if target_snapshot_dir.directory?
                 target_snapshot_dir.rmtree
             end
+
+            raise
         end
 
         def sync
