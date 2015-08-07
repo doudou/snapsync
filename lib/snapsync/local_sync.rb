@@ -179,17 +179,28 @@ module Snapsync
             sync_snapshot ||= create_synchronization_point
 
             target_snapshots = target.each_snapshot.sort_by(&:num)
+            nums_on_target = target_snapshots.map(&:num).to_set
 
             last_common_snapshot = source_snapshots.find do |s|
-                target_snapshots.find { |src| src.num == s.num }
+                nums_on_target.include?(s.num)
             end
             if !last_common_snapshot
                 Snapsync.warn "no common snapshot found, will have to synchronize the first snapshot fully"
             end
 
-            snapshots_to_sync = target.sync_policy.filter_snapshots_to_sync(target, source_snapshots)
-            snapshots_to_sync.each do |src|
-                if synchronize_snapshot(target.dir + src.num.to_s, src, parent: last_common_snapshot)
+            # Merge source and target snapshots to find out which are needed on
+            # the target, and then remove the ones that are already present.
+            all_snapshots = source_snapshots.find_all { |s| !nums_on_target.include?(s.num) } +
+                target_snapshots
+            nums_required = target.sync_policy.filter_snapshots(all_snapshots).
+                map(&:num).to_set
+            source_snapshots.each do |src|
+                if !nums_required.include?(src.num)
+                    if nums_on_target.include?(src.num)
+                        last_common_snapshot = src
+                    end
+                    next
+                elsif synchronize_snapshot(target.dir + src.num.to_s, src, parent: last_common_snapshot)
                     last_common_snapshot = src
                 end
             end

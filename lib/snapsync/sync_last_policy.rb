@@ -14,8 +14,8 @@ module Snapsync
             pp.text "will keep only the latest snapshot"
         end
 
-        # (see DefaultSyncPolicy#filter_snapshots_to_sync)
-        def filter_snapshots_to_sync(target, snapshots)
+        # (see DefaultSyncPolicy#filter_snapshots)
+        def filter_snapshots(snapshots)
             last = snapshots.sort_by(&:num).reverse.
                 find { |s| !s.synchronization_point? }
             [last]

@@ -10,7 +10,7 @@ module Snapsync
 
         def cleanup(target, dry_run: false)
             snapshots = target.each_snapshot.to_a
-            filtered_snapshots = policy.filter_snapshots_to_sync(target, snapshots).to_set
+            filtered_snapshots = policy.filter_snapshots(snapshots).to_set
 
             if filtered_snapshots.any? { |s| s.synchronization_point? }
                 raise InvalidPolicy, "#{policy} returned a snapsync synchronization point in its results"

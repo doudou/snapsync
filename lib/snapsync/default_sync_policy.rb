@@ -8,7 +8,7 @@ module Snapsync
     #
     # Synchronization policy objects are used by the synchronization passes to
     # decide which snapshots to copy and which to not copy. They have to provide
-    # {#filter_snapshots_to_sync}.
+    # {#filter_snapshots}.
     #
     # This default policy is to copy everything but the snapsync-created
     # synchronization points that are not involving the current target
@@ -27,7 +27,7 @@ module Snapsync
         # @param [#uuid] target the target object
         # @param [Array<Snapshot>] the snapshot candidates
         # @return [Array<Snapshot>] the snapshots that should be copied
-        def filter_snapshots_to_sync(target, snapshots)
+        def filter_snapshots(snapshots)
             # Filter out any snapsync-generated snapshot
             snapshots.find_all { |s| !s.synchronization_point? }
         end

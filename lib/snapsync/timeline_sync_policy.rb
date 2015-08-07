@@ -91,6 +91,8 @@ module Snapsync
         def compute_required_snapshots(target_snapshots)
             keep_flags = Hash.new { |h,k| h[k] = [false, []] }
 
+            target_snapshots = target_snapshots.sort_by(&:num)
+
             # Mark all important snapshots as kept
             target_snapshots.each do |s|
                 if s.user_data['important'] == 'yes'
@@ -122,7 +124,7 @@ module Snapsync
 
             # Finally, guard against race conditions. Always keep all snapshots
             # between the last-to-keep and the last
-            target_snapshots.sort_by(&:num).reverse.each do |s|
+            target_snapshots.reverse.each do |s|
                 break if keep_flags[s.num][0]
                 keep_flags[s.num][0] = true
                 keep_flags[s.num][1] << "last snapshot"
@@ -130,9 +132,10 @@ module Snapsync
             keep_flags
         end
 
-        def filter_snapshots_to_sync(target, source_snapshots)
+        def filter_snapshots(snapshots)
             Snapsync.debug do
                 Snapsync.debug "Filtering snapshots according to timeline"
+                Snapsync.debug "Snapshots: #{snapshots.map(&:num).sort.join(", ")}"
                 timeline.each do |t|
                     Snapsync.debug "  #{t}"
                 end
@@ -140,10 +143,10 @@ module Snapsync
             end
 
             default_policy = DefaultSyncPolicy.new
-            source_snapshots  = default_policy.filter_snapshots_to_sync(target, source_snapshots)
+            snapshots  = default_policy.filter_snapshots(snapshots)
 
-            keep_flags = compute_required_snapshots(source_snapshots)
-            source_snapshots.sort_by(&:num).find_all do |s|
+            keep_flags = compute_required_snapshots(snapshots)
+            snapshots.sort_by(&:num).find_all do |s|
                 keep, reason = keep_flags.fetch(s.num, nil)
                 if keep
                     Snapsync.debug "Timeline: selected snapshot #{s.num} #{s.date.to_time}"
