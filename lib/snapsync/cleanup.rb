@@ -23,9 +23,6 @@ module Snapsync
             last_sync_point = snapshots.
                 sort_by(&:num).reverse.
                 find { |s| s.synchronization_point_for?(target) }
-            if !last_sync_point
-                binding.pry
-            end
             filtered_snapshots << last_sync_point
             filtered_snapshots = filtered_snapshots.to_set
 
