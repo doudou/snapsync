@@ -33,19 +33,25 @@ module Snapsync
             @autoclean
         end
 
-        def run
+        # Enumerate the targets available under {#target_dir}
+        def each_target
             SnapperConfig.each_in_dir(config_dir) do |config|
                 dir = target_dir + config.name
                 if !dir.exist?
-                    Snapsync.warn "not synchronizing #{config.name}, there are no corresponding directory in #{target_dir}. Call snapsync init to create a proper target directory"
+                    Snapsync.warn "no directory for configuration #{config.name} in #{target_dir}"
                 else
-                    target = LocalTarget.new(dir)
-                    if !target.enabled?
-                        Snapsync.warn "not synchronizing #{config.name}, it is disabled"
-                        next
-                    end
-                    Sync.new(config, target, autoclean: autoclean?).run
+                    yield(LocalTarget.new(dir))
                 end
+            end
+        end
+
+        def run
+            each_target do |target|
+                if !target.enabled?
+                    Snapsync.warn "not synchronizing to #{target.dir}, it is disabled"
+                    next
+                end
+                Sync.new(config, target, autoclean: autoclean?).run
             end
         end
     end

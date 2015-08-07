@@ -11,13 +11,21 @@ module Snapsync
         attr_reader :targets
         attr_reader :partitions
 
+        DEFAULT_CONFIG_PATH = Pathname.new('/etc/snapsync.conf')
+
+        def self.load_default
+            result = new
+            result.load_config
+            result
+        end
+
         def initialize(config_dir = SnapperConfig.default_config_dir)
             @config_dir = config_dir
             @targets = Hash.new
             @partitions = PartitionsMonitor.new
         end
 
-        def load_config(path)
+        def load_config(path = DEFAULT_CONFIG_PATH)
             conf = YAML.load(path.read) || Array.new
             parse_config(conf)
         end
@@ -32,7 +40,7 @@ module Snapsync
         end
 
         def write_config(path)
-            data = each_target.map do |target|
+            data = each_autosync_target.map do |target|
                 Hash['partition_uuid' => target.partition_uuid,
                      'path' => target.path.to_s,
                      'automount' => !!target.automount,
@@ -43,10 +51,83 @@ module Snapsync
             end
         end
 
-        def each_target
+        # Enumerates the declared autosync targets
+        #
+        # @yieldparam [AutoSync] target
+        # @return [void]
+        def each_autosync_target
             return enum_for(__method__) if !block_given?
             targets.each_value do |targets|
                 targets.each { |t| yield(t) }
+            end
+        end
+
+        # Enumerates the available autosync targets
+        #
+        # It may mount partitions as needed
+        #
+        # @yieldparam [Pathname] path the path to the target's base dir
+        #   (suitable to be processed by e.g. AutoSync)
+        # @yieldparam [AutoSyncTarget] target the target located at 'path'
+        # @return [void]
+        def each_available_autosync_target
+            return enum_for(__method__) if !block_given?
+            partitions.poll
+
+            partitions.known_partitions.each do |uuid, fs|
+                autosync_targets = targets[uuid]
+                next if autosync_targets.empty?
+
+                mp = fs['MountPoints'].first
+                if mp
+                    mp = Pathname.new(mp[0..-2].pack("U*"))
+                end
+
+                begin
+                    mounted = false
+
+                    if !mp
+                        if !autosync_targets.any?(&:automount)
+                            Snapsync.info "partition #{uuid} is present, but not mounted and automount is false. Ignoring"
+                            next
+                        end
+
+                        Snapsync.info "partition #{uuid} is present, but not mounted, automounting"
+                        begin
+                            mp = fs.Mount([]).first
+                        rescue Exception => e
+                            Snapsync.warn "failed to mount, ignoring this target"
+                            next
+                        end
+                        mp = Pathname.new(mp)
+                        mounted = true
+                    end
+
+                    autosync_targets.each do |target|
+                        yield(mp + target.path, target)
+                    end
+
+                ensure
+                    if mounted
+                        fs.Unmount([])
+                    end
+                end
+            end
+        end
+
+        # Enumerates the available synchronization targets
+        #
+        # It may mount partitions as needed
+        #
+        # @yieldparam [LocalTarget] target the available target
+        # @return [void]
+        def each_available_target
+            return enum_for(__method__) if !block_given?
+            each_available_autosync_target do |path, t|
+                op = SyncAll.new(path, config_dir: config_dir)
+                op.each_target do |target|
+                    yield(target)
+                end
             end
         end
 
@@ -67,37 +148,10 @@ module Snapsync
 
         def run(period: 60)
             while true
-                partitions.poll
-                partitions.known_partitions.each do |uuid, fs|
-                    mp = fs['MountPoints'].first
-                    targets[uuid].each do |t|
-                        if !mp
-                            if t.automount
-                                Snapsync.info "partition #{t.partition_uuid} is present, but not mounted, automounting"
-                                begin
-                                    mp = fs.Mount([]).first
-                                rescue Exception => e
-                                    Snapsync.warn "failed to mount, ignoring this target"
-                                    next
-                                end
-                                mp = Pathname.new(mp)
-                                mounted = true
-                            else
-                                Snapsync.info "partition #{t.partition_uuid} is present, but not mounted and automount is false. Ignoring"
-                                next
-                            end
-                        else
-                            mp = Pathname.new(mp[0..-2].pack("U*"))
-                        end
-
-                        full_path = mp + t.path
-                        Snapsync.info "sync-all on #{mp + t.path} (partition #{t.partition_uuid})"
-                        op = SyncAll.new(mp + t.path, config_dir: config_dir)
-                        op.run
-                        if mounted
-                            fs.Unmount([])
-                        end
-                    end
+                each_available_autosync_target do |path, t|
+                    Snapsync.info "sync-all on #{path} (partition #{t.partition_uuid})"
+                    op = SyncAll.new(path, config_dir: config_dir)
+                    op.run
                 end
                 Snapsync.info "done all declared autosync partitions, sleeping #{period}s"
                 sleep period

@@ -30,7 +30,8 @@ module Snapsync
         # Defaults to true
         def autoclean?; !!@autoclean end
 
-        class InvalidUUIDError < RuntimeError; end
+        class InvalidTargetPath < RuntimeError; end
+        class InvalidUUIDError < InvalidTargetPath; end
         class NoUUIDError < InvalidUUIDError; end
 
         def initialize(dir, create_if_needed: true)

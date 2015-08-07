@@ -22,6 +22,36 @@ module Snapsync
                     Snapsync.logger.level = 'DEBUG'
                 end
             end
+
+            # Resolves a path (or nil) into a list of snapsync targets and
+            # yields them
+            #
+            # @param [String,nil] dir the path the user gave, or nil if all
+            #   available auto-sync paths should be processed. If the directory is
+            #   a target, it is yield as-is. It can also be the root of a sync-all
+            #   target (with proper snapsync target as subdirectories whose name
+            #   matches the snapper configurations)
+            #
+            # @yieldparam [LocalTarget] target
+            def each_target(dir = nil)
+                return enum_for(__method__) if !block_given?
+                if dir
+                    dir = Pathname.new(dir)
+                    begin
+                        return yield(LocalTarget.new(dir, create_if_needed: false))
+                    rescue LocalTarget::InvalidTargetPath
+                    end
+
+                    SyncAll.new(dir).each_target do |target|
+                        yield(target)
+                    end
+                else
+                    autosync = AutoSync.load_default
+                    autosync.each_available_target do |target|
+                        yield(target)
+                    end
+                end
+            end
         end
 
         desc 'sync CONFIG DIR', 'synchronizes the snapper configuration CONFIG with the snapsync target DIR'
@@ -123,7 +153,7 @@ policy for more information
 
             autosync = AutoSync.new
             autosync.load_config(conf_path)
-            exists = autosync.each_target.find do |t|
+            exists = autosync.each_autosync_target.find do |t|
                 t.partition_uuid == uuid && t.path.cleanpath == relative.cleanpath
             end
             if exists
@@ -166,15 +196,10 @@ for 10 days). snapsync understands the following period names: year month day ho
         EOD
         def policy(dir, type, *options)
             handle_class_options
-
-            dir = Pathname.new(dir)
-            if !dir.exist?
-                dir.mkpath
+            each_target(dir) do |target|
+                target.change_policy(type, options)
+                target.write_config
             end
-
-            target = LocalTarget.new(dir)
-            target.change_policy(type, options)
-            target.write_config
         end
 
         desc 'destroy DIR', 'destroys a snapsync target'
@@ -196,9 +221,28 @@ While it can easily be done manually, this command makes sure that the snapshots
         option :config_file, desc: "path to the config file (defaults to /etc/snapsync.conf)",
             default: '/etc/snapsync.conf'
         def auto_sync
+            handle_class_options
             auto = AutoSync.new(SnapperConfig.default_config_dir)
             auto.load_config(Pathname.new(options[:config_file]))
             auto.run
+        end
+
+        desc 'list [DIR]', 'list the snapshots present on DIR. If DIR is omitted, tries to access all targets defined as auto-sync targets'
+        def list(dir = nil)
+            handle_class_options
+            each_target(dir) do |target|
+                puts "== #{target.dir}"
+                puts "UUID: #{target.uuid}"
+                puts "Enabled: #{target.enabled?}"
+                puts "Autoclean: #{target.autoclean?}"
+                print "Policy: "
+                pp target.sync_policy
+
+                puts "Snapshots:"
+                target.each_snapshot do |s|
+                    puts "  #{s.num} #{s.to_time}"
+                end
+            end
         end
     end
 end
