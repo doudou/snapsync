@@ -25,12 +25,15 @@ module Snapsync
         end
 
         desc 'sync CONFIG DIR', 'synchronizes the snapper configuration CONFIG with the snapsync target DIR'
+        option :autoclean, type: :boolean, default: nil,
+            desc: 'whether the target should be cleaned of obsolete snapshots',
+            long_desc: "The default is to use the value specified in the target's configuration file. This command line option allows to override the default"
         def sync(config_name, dir)
             handle_class_options
 
             config = config_from_name(config_name)
             target = LocalTarget.new(Pathname.new(dir))
-            LocalSync.new(config, target).sync
+            Sync.new(config, target, autoclean: options[:autoclean]).run
         end
 
         desc 'sync-all DIR', 'synchronizes all snapper configurations into corresponding subdirectories of DIR'

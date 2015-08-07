@@ -23,17 +23,14 @@ module Snapsync
             @autoclean  = autoclean
         end
 
-        # Whether the given target should be cleaned after synchronization.
-        # 
-        # This is determined either by {#autoclean?} if {.new} was called with
-        # true or false, or by the target's own autoclean flag if {.new} was
-        # called with nil
-        def should_autoclean_target?(target)
-            if @autoclean.nil?
-                target.autoclean?
-            else
-                @autoclean
-            end
+        # Whether the target should be forced to autoclean(true), force to not
+        # run cleanup (false) or use their own config file to decide (nil)
+        #
+        # The default is nil
+        #
+        # @return [Boolean,nil]
+        def autoclean?
+            @autoclean
         end
 
         def run
@@ -47,18 +44,7 @@ module Snapsync
                         Snapsync.warn "not synchronizing #{config.name}, it is disabled"
                         next
                     end
-
-                    LocalSync.new(config, target).sync
-                    if should_autoclean_target?(target)
-                        if target.cleanup
-                            Snapsync.info "running cleanup for #{config.name}"
-                            target.cleanup.cleanup(target)
-                        else
-                            Snapsync.info "#{target.sync_policy.class.name} policy set, no cleanup to do for #{config.name}"
-                        end
-                    else
-                        Snapsync.info "autoclean not set on #{config.name}"
-                    end
+                    Sync.new(config, target, autoclean: autoclean?).run
                 end
             end
         end

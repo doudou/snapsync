@@ -19,6 +19,7 @@ require 'snapsync/timeline_sync_policy'
 require 'snapsync/sync_last_policy'
 
 require 'snapsync/partitions_monitor'
+require 'snapsync/sync'
 require 'snapsync/sync_all'
 require 'snapsync/auto_sync'
 
