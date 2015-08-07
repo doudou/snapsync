@@ -51,7 +51,11 @@ module Snapsync
                     Snapsync.warn "not synchronizing to #{target.dir}, it is disabled"
                     next
                 end
-                Sync.new(config, target, autoclean: autoclean?).run
+                begin
+                    Sync.new(config, target, autoclean: autoclean?).run
+                rescue Exception => e
+                    Snapsync.warn "failed to synchronization #{config.name} on #{target.dir}"
+                end
             end
         end
     end
