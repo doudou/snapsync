@@ -16,7 +16,8 @@ fi
 if test -d /lib/systemd/system; then
     snapsync_gem=`bundler show snapsync`
     sudo cp $snapsync_gem/snapsync.service /lib/systemd/system
-    ( sudo systemctl enable snapsync.service
+    ( sudo systemctl stop snapsync.service
+      sudo systemctl enable snapsync.service
       sudo systemctl start snapsync.service )
 fi
 
