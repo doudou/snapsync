@@ -31,6 +31,9 @@ module Snapsync
                     target.delete(s, dry_run: dry_run)
                 end
             end
+
+            Snapsync.info "Waiting for subvolumes to be deleted"
+            IO.popen(["btrfs", "subvolume", "sync", err: '/dev/null']).read
         end
     end
 end
