@@ -40,13 +40,13 @@ module Snapsync
                 if !dir.exist?
                     Snapsync.warn "no directory for configuration #{config.name} in #{target_dir}"
                 else
-                    yield(LocalTarget.new(dir))
+                    yield(config, LocalTarget.new(dir))
                 end
             end
         end
 
         def run
-            each_target do |target|
+            each_target do |config, target|
                 if !target.enabled?
                     Snapsync.warn "not synchronizing to #{target.dir}, it is disabled"
                     next

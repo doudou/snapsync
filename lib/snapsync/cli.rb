@@ -42,13 +42,13 @@ module Snapsync
                     rescue LocalTarget::InvalidTargetPath
                     end
 
-                    SyncAll.new(dir).each_target do |target|
-                        yield(target)
+                    SyncAll.new(dir).each_target do |config, target|
+                        yield(config, target)
                     end
                 else
                     autosync = AutoSync.load_default
-                    autosync.each_available_target do |target|
-                        yield(target)
+                    autosync.each_available_target do |config, target|
+                        yield(config, target)
                     end
                 end
             end
@@ -73,6 +73,7 @@ module Snapsync
         def sync_all(dir)
             handle_class_options
 
+            dir = Pathname.new(dir)
             op = SyncAll.new(dir, config_dir: SnapperConfig.default_config_dir, autoclean: options[:autoclean])
             op.run
         end
@@ -196,7 +197,7 @@ for 10 days). snapsync understands the following period names: year month day ho
         EOD
         def policy(dir, type, *options)
             handle_class_options
-            each_target(dir) do |target|
+            each_target(dir) do |_, target|
                 target.change_policy(type, options)
                 target.write_config
             end
@@ -230,7 +231,7 @@ While it can easily be done manually, this command makes sure that the snapshots
         desc 'list [DIR]', 'list the snapshots present on DIR. If DIR is omitted, tries to access all targets defined as auto-sync targets'
         def list(dir = nil)
             handle_class_options
-            each_target(dir) do |target|
+            each_target(dir) do |_, target|
                 puts "== #{target.dir}"
                 puts "UUID: #{target.uuid}"
                 puts "Enabled: #{target.enabled?}"

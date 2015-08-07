@@ -125,8 +125,8 @@ module Snapsync
             return enum_for(__method__) if !block_given?
             each_available_autosync_target do |path, t|
                 op = SyncAll.new(path, config_dir: config_dir)
-                op.each_target do |target|
-                    yield(target)
+                op.each_target do |config, target|
+                    yield(config, target)
                 end
             end
         end
