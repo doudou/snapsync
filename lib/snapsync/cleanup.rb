@@ -26,14 +26,19 @@ module Snapsync
             filtered_snapshots << last_sync_point
             filtered_snapshots = filtered_snapshots.to_set
 
-            snapshots.sort_by(&:num).each do |s|
+            deleted_snapshots = snapshots.sort_by(&:num).find_all do |s|
                 if !filtered_snapshots.include?(s)
                     target.delete(s, dry_run: dry_run)
+                    true
                 end
             end
 
-            Snapsync.info "Waiting for subvolumes to be deleted"
-            IO.popen(["btrfs", "subvolume", "sync", err: '/dev/null']).read
+            if !deleted_snapshots.empty?
+                Snapsync.info "Waiting for subvolumes to be deleted"
+                deleted_snapshots.each do |s|
+                    IO.popen(["btrfs", "subvolume", "sync", s.subvolume_dir.to_s, err: '/dev/null']).read
+                end
+            end
         end
     end
 end
