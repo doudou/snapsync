@@ -84,7 +84,7 @@ module Snapsync
 
             if copy_snapshot(target_snapshot_dir, src, parent: parent)
                 partial_marker_path.unlink
-                IO.popen(["btrfs", "filesystem", "sync", target_snapshot_dir.to_s, err: '/dev/null']).read
+                Btrfs.popen("filesystem", "sync", target_snapshot_dir.to_s)
                 Snapsync.info "Successfully synchronized #{src.snapshot_dir}"
                 true
             end

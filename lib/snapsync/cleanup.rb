@@ -36,7 +36,10 @@ module Snapsync
             if !deleted_snapshots.empty?
                 Snapsync.info "Waiting for subvolumes to be deleted"
                 deleted_snapshots.each do |s|
-                    IO.popen(["btrfs", "subvolume", "sync", s.subvolume_dir.to_s, err: '/dev/null']).read
+                    begin
+                        Btrfs.popen("subvolume", "sync", s.subvolume_dir.to_s)
+                    rescue Btrfs::Error
+                    end
                 end
             end
         end
