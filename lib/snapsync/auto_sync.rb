@@ -146,7 +146,7 @@ module Snapsync
             end
         end
 
-        def run(period: 60)
+        def run(period: 600)
             while true
                 each_available_autosync_target do |path, t|
                     Snapsync.info "sync-all on #{path} (partition #{t.partition_uuid})"
