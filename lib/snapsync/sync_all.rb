@@ -56,10 +56,10 @@ module Snapsync
                 rescue Interrupt
                     raise
                 rescue Exception => e
-                    Snapsync.warn "failed to synchronization #{config.name} on #{target.dir}"
+                    Snapsync.warn "failed to synchronize #{config.name} on #{target.dir}"
                     PP.pp(e, buffer = String.new)
                     buffer.each_line do |line|
-                        Snapsync.warn "  #{line}"
+                        Snapsync.warn "  #{line.chomp}"
                     end
                     e.backtrace.each do |line|
                         Snapsync.debug "  #{line}"

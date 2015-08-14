@@ -134,7 +134,9 @@ module Snapsync
             end
 
             xml = REXML::Document.new(info_xml.read)
-            if xml.root.name != 'snapshot'
+            if !xml.root
+                raise InvalidInfoFile, "#{snapshot_dir}/info.xml does not look like a snapper info file (not an XML file ?)"
+            elsif xml.root.name != 'snapshot'
                 raise InvalidInfoFile, "#{snapshot_dir}/info.xml does not look like a snapper info file (root is not 'snapshot')"
             end
 

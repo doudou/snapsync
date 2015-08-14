@@ -19,15 +19,26 @@ module Snapsync
 
         def self.popen(*args, mode: 'r', raise_on_error: true, **options)
             err_r, err_w = IO.pipe
-            result = IO.popen(['btrfs', *args, err: err_w, **options], mode) do |io|
+
+            block_error, block_result = nil
+            IO.popen(['btrfs', *args, err: err_w, **options], mode) do |io|
                 err_w.close
-                yield(io)
+                begin
+                    block_result = yield(io)
+                rescue Error
+                    raise
+                rescue Exception => block_error
+                end
             end
 
-            if $?.success?
-                result
+            if $?.success? && !block_error
+                block_result
             elsif raise_on_error
-                raise Error.new, "btrfs failed"
+                if block_error
+                    raise Error.new, block_error.message
+                else
+                    raise Error.new, "btrfs failed"
+                end
             end
 
         rescue Error => e
