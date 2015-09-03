@@ -12,6 +12,11 @@ Gem::Specification.new do |spec|
   spec.summary       = "tool to automate backing up snapper snapshots to other medias"
   spec.homepage      = "https://github.com/doudou/snapsync"
   spec.license       = "MIT"
+  spec.description   =<<-EOD
+Snapsync is a tool that automates transferring snapper snapshots to
+external media (USB drives ...) and managing these snapshots (e.g.
+timeline cleanup)
+EOD
 
   spec.files         = `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
   spec.bindir        = "bin"
