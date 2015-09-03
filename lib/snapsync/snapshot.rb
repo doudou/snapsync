@@ -98,6 +98,20 @@ module Snapsync
             end
         end
 
+        def self.each_snapshot_raw(snapshot_dir)
+            return enum_for(__method__, snapshot_dir) if !block_given?
+            snapshot_dir.each_child do |path|
+                if path.directory? && path.basename.to_s =~ /^\d+$/
+                    begin
+                        snapshot = Snapshot.new(path)
+                        yield(path, snapshot, nil)
+                    rescue InvalidSnapshot => e
+                        yield(path, nil, e)
+                    end
+                end
+            end
+        end
+
         # Enumerate the snapshots from the given directory
         #
         # The directory is supposed to be maintained in a snapper-compatible
@@ -105,22 +119,15 @@ module Snapsync
         # snapshot's number
         def self.each(snapshot_dir, with_partial: false)
             return enum_for(__method__, snapshot_dir, with_partial: with_partial) if !block_given?
-            snapshot_dir.each_child do |path|
-                if path.directory? && path.basename.to_s =~ /^\d+$/
-                    begin
-                        snapshot = Snapshot.new(path)
-                    rescue InvalidSnapshot => e
-                        Snapsync.warn "ignored #{path} in #{self}: #{e}"
-                    end
-                    if snapshot
-                        if snapshot.num != Integer(path.basename.to_s)
-                            Snapsync.warn "ignored #{path} in #{self}: the snapshot reports num=#{snapshot.num} but its directory is called #{path.basename}"
-                        elsif !with_partial && snapshot.partial?
-                            Snapsync.warn "ignored #{path} in #{self}: this is a partial snapshot"
-                        else
-                            yield snapshot
-                        end
-                    end
+            each_snapshot_raw(snapshot_dir) do |path, snapshot, error|
+                if error
+                    Snapsync.warn "ignored #{path} in #{self}: #{error}"
+                elsif snapshot.num != Integer(path.basename.to_s)
+                    Snapsync.warn "ignored #{path} in #{self}: the snapshot reports num=#{snapshot.num} but its directory is called #{path.basename}"
+                elsif !with_partial && snapshot.partial?
+                    Snapsync.warn "ignored #{path} in #{self}: this is a partial snapshot"
+                else
+                    yield snapshot
                 end
             end
         end

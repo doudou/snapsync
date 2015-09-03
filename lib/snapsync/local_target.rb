@@ -55,6 +55,9 @@ module Snapsync
             write_config
         end
 
+        def each_snapshot_raw(&block)
+            Snapshot.each_snapshot_raw(dir, &block)
+        end
         def each_snapshot(&block)
             Snapshot.each(dir, &block)
         end

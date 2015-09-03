@@ -31,7 +31,37 @@ module Snapsync
             LocalSync.new(config, target).sync
         end
 
+        def remove_partially_synchronized_snapshots
+            target.each_snapshot_raw do |path, snapshot, error|
+                next if !error && !snapshot.partial?
+
+                Snapsync.info "Removing partial snapshot at #{path}"
+                begin
+                    if (path + "snapshot").exist?
+                        Btrfs.popen("subvolume", "delete", (path + "snapshot").to_s)
+                    elsif (path + "snapshot.partial").exist?
+                        Btrfs.popen("subvolume", "delete", (path + "snapshot.partial").to_s)
+                    end
+                rescue Btrfs::Error => e
+                    Snapsync.warn "failed to remove snapshot at #{path}, keeping the rest of the snapshot"
+                    Snapsync.warn e.message
+                    next
+                end
+
+                path.rmtree
+                Snapsync.info "Flushing data to disk"
+                begin
+                    Btrfs.popen("subvolume", "sync", path.to_s)
+                rescue Btrfs::Error
+                end
+            end
+        end
+
         def run
+            if autoclean?
+                remove_partially_synchronized_snapshots
+            end
+
             sync
 
             if autoclean?
