@@ -116,26 +116,51 @@ module Snapsync
         def config_path
             dir + "snapsync.config"
         end
-        
-        def change_policy(type, options)
+
+        # Parse a policy specification as provided on the command line or saved
+        # in the config file into sync and cleanup policy objects
+        #
+        # @param [String] type the policy type, either default, timeline or last
+        # @param [Array<String>] options to be passed to the #from_config method
+        #   on the underlying policy classes
+        #
+        # @return [(#filter_snapshots,#filter_snapshots)] the sync policy
+        #   and the cleanup policy. The cleanup policy might be nil
+        # @raise [InvalidConfiguration] if the policy type is unknown
+        # @see DefaultSyncPolicy TimelineSyncPolicy SyncLastPolicy
+        def self.parse_policy(type, options)
             case type
             when 'default'
                 sync_policy = DefaultSyncPolicy
-                cleanup = nil
+                cleanup     = nil
             when 'timeline'
                 sync_policy = TimelineSyncPolicy
-                cleanup = TimelineSyncPolicy
+                cleanup     = TimelineSyncPolicy
             when 'last'
                 sync_policy = SyncLastPolicy
-                cleanup = SyncLastPolicy
+                cleanup     = SyncLastPolicy
             else
                 raise InvalidConfiguration, "synchronization policy #{type} does not exist"
             end
-            @sync_policy = sync_policy.from_config(options)
-            @cleanup =
+            sync_policy = sync_policy.from_config(options)
+            cleanup =
                 if cleanup
                     Cleanup.new(cleanup.from_config(options))
                 end
+            return sync_policy, cleanup
+        end
+
+        # Verifies that the given policy type and options are valid
+        def self.valid_policy?(type, options)
+            parse_policy(type, options)
+            true
+        rescue InvalidConfiguration
+            false
+        end
+
+        def change_policy(type, options)
+            @sync_policy, @cleanup =
+                self.class.parse_policy(type, options)
         end
 
         def delete(s, dry_run: false)

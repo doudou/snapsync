@@ -19,7 +19,10 @@ module Snapsync
 
         def parse_config(config)
             config.each_slice(2) do |period, count|
-                add(period.to_sym, Integer(count))
+                begin add(period.to_sym, Integer(count))
+                rescue ArgumentError
+                    raise InvalidConfiguration, "invalid timeline period or count #{period} #{count}"
+                end
             end
         end
 

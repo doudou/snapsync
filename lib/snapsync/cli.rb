@@ -91,8 +91,27 @@ module Snapsync
             end
         end
 
-        desc 'init NAME DIR [POLICY]', 'creates a synchronization target, optionally specifying the synchronization and cleanup policy'
+        no_commands do
+            def normalize_policy(args)
+                policy =
+                    if args.empty?
+                        ['default', Array.new]
+                    elsif args.size == 1
+                        args + [Array.new]
+                    else
+                        [args.shift, args]
+                    end
+
+                LocalTarget.parse_policy(*policy)
+                return *policy
+            end
+        end
+
+        desc 'init [NAME] DIR [POLICY]', 'creates a synchronization target, optionally adding it to the auto-sync targets and specifying the synchronization and cleanup policies'
         long_desc <<-EOD
+NAME must be provided if DIR is to be added to the auto-sync targets (which
+is the default).
+
 By default, the default policy is used. To change this, provide additional
 arguments as would be expected by the policy subcommand. Run snapsync help
 policy for more information
@@ -103,13 +122,44 @@ policy for more information
             desc: "if true (the default), add the newly created target to auto-sync"
         option :automount, type: :boolean, default: true,
             desc: 'whether the supporting partition should be auto-mounted by snapsync when needed or not (the default is yes). Only useful if --no-auto has not been provided on the command line.'
-        def init(name, dir, *policy)
+        def init(*args)
+            if options[:auto] && !options[:all]
+                raise ArgumentError, "cannot use --auto without --all"
+            end
+
+            if options[:auto]
+                name, dir, *policy = *args
+            else
+                dir, *policy = *args
+            end
             dir = Pathname.new(dir)
 
-            if policy.empty?
-                policy = ['default', Array.new]
-            elsif policy.size == 1
-                policy << Array.new
+            # Parse the policy option early to avoid breaking later
+            begin
+                policy = normalize_policy(policy)
+            rescue Exception
+                # Try to see if the user forgot to add the NAME option or added
+                # the name option but should not have
+                if options[:auto]
+                    valid_policy = begin normalize_policy(args[1..-1])
+                                       true
+                                   rescue InvalidConfiguration
+                                       false
+                                   end
+                    if valid_policy
+                        raise ArgumentError, "--auto is set but it seems that you did not provide a name"
+                    end
+                else
+                    valid_policy = begin normalize_policy(args[2..-1])
+                                       true
+                                   rescue InvalidConfiguration
+                                       false
+                                   end
+                    if valid_policy
+                        raise ArgumentError, "--auto is not set but it seems that you provided a name"
+                    end
+                end
+                raise ArgumentError, "invalid policy #{policy}"
             end
 
             dirs = Array.new
@@ -134,12 +184,10 @@ policy for more information
                 end
             end
 
-            if options[:auto]
-                if !options[:all]
-                    Snapsync.warn "cannot use --auto without --all"
-                else
-                    auto_add(name, dir)
-                end
+            # We check that both options are set together for some added safety,
+            # but it's checked at the top of the method
+            if options[:auto] && options[:all]
+                auto_add(name, dir)
             end
         end
 
@@ -197,6 +245,8 @@ for 10 days). snapsync understands the following period names: year month day ho
         EOD
         def policy(dir, type, *options)
             handle_class_options
+            # Parse the policy early to avoid breaking later
+            LocalTarget.parse_policy(*policy)
             each_target(dir) do |_, target|
                 target.change_policy(type, options)
                 target.write_config
