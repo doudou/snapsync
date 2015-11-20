@@ -75,14 +75,17 @@ module Snapsync
             config['enabled'] = enabled?
             config['autoclean'] = autoclean?
 
-            File.open(config_path, 'w') do |io|
-                io.write YAML.dump(config)
+            config_path.open('w') do |io|
+                YAML.dump(config, io)
             end
         end
 
         def read_config
             begin
-                raw_config = YAML.load(config_path.read)
+                if !(raw_config = YAML.load(config_path.read))
+                    raise NoUUIDError, "empty configuration file found in #{config_path}"
+                end
+
             rescue Errno::ENOENT => e
                 raise NoUUIDError, e.message, e.backtrace
             end
