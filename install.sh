@@ -10,8 +10,8 @@ GEMFILE
 bundler install --standalone --binstubs
 if test -d /opt/snapsync; then
     sudo rm -rf /opt/snapsync
-    sudo cp -r . /opt/snapsync
 fi
+sudo cp -r . /opt/snapsync
 
 if test -d /lib/systemd/system; then
     snapsync_gem=`bundler show snapsync`
@@ -22,4 +22,3 @@ if test -d /lib/systemd/system; then
 fi
 
 rm -rf $target
-
