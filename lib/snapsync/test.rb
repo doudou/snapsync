@@ -15,7 +15,7 @@ end
 
 require 'minitest/autorun'
 require 'snapsync'
-require 'flexmock/test_unit'
+require 'flexmock/minitest'
 require 'minitest/spec'
 
 if ENV['TEST_ENABLE_PRY'] != '0'

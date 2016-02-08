@@ -52,6 +52,11 @@ module Snapsync
                     end
                 end
             end
+
+            def partition_of(dir)
+                partitions = PartitionsMonitor.new
+                PartitionsMonitor.new.partition_of(dir)
+            end
         end
 
         desc 'sync CONFIG DIR', 'synchronizes the snapper configuration CONFIG with the snapsync target DIR'
@@ -122,14 +127,22 @@ policy for more information
             desc: "if true (the default), add the newly created target to auto-sync"
         option :automount, type: :boolean, default: true,
             desc: 'whether the supporting partition should be auto-mounted by snapsync when needed or not (the default is yes). Only useful if --no-auto has not been provided on the command line.'
+        option :config_file, default: '/etc/snapsync.conf',
+            desc: 'the configuration file that should be updated'
         def init(*args)
             if options[:auto] && !options[:all]
                 raise ArgumentError, "cannot use --auto without --all"
             end
 
             if options[:auto]
+                if args.size < 2
+                    self.class.handle_argument_error(self.class.all_commands['init'], nil, args, 2)
+                end
                 name, dir, *policy = *args
             else
+                if args.size < 1
+                    self.class.handle_argument_error(self.class.all_commands['init'], nil, args, 1)
+                end
                 dir, *policy = *args
             end
             dir = Pathname.new(dir)
@@ -194,19 +207,29 @@ policy for more information
         desc 'auto-add NAME DIR', "add DIR to the set of targets for auto-sync"
         option :automount, type: :boolean, default: true,
             desc: 'whether the supporting partition should be auto-mounted by snapsync when needed or not (the default is yes)'
+        option :config_file, default: '/etc/snapsync.conf',
+            desc: 'the configuration file that should be updated'
         def auto_add(name, dir)
-            partitions = PartitionsMonitor.new
-            uuid, relative = partitions.partition_of(Pathname.new(dir))
-
-            conf_path = Pathname.new('/etc/snapsync.conf')
+            uuid, relative = partition_of(Pathname.new(dir))
+            conf_path = Pathname.new(options[:config_file])
 
             autosync = AutoSync.new
-            autosync.load_config(conf_path)
+            if conf_path.exist?
+                autosync.load_config(conf_path)
+            end
             exists = autosync.each_autosync_target.find do |t|
                 t.partition_uuid == uuid && t.path.cleanpath == relative.cleanpath
             end
             if exists
-                if exists.automount == options[:automount]
+                if !exists.name
+                    if (exists.automount ^ options[:automount]) && name
+                        Snapsync.info "already exists without a name, setting the name to #{name}"
+                    elsif name
+                        Snapsync.info "already exists without a name and a different automount flag, setting the name to #{name} and updating the automount flag"
+                    else
+                        Snapsync.info "already exists with different automount flag, updating"
+                    end
+                elsif exists.automount == options[:automount]
                     Snapsync.info "already exists under the name #{exists.name}"
                 else
                     Snapsync.info "already exists under the name #{exists.name} but with a different automount flag, changing"
