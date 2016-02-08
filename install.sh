@@ -12,6 +12,7 @@ if test -d /opt/snapsync; then
     sudo rm -rf /opt/snapsync
 fi
 sudo cp -r . /opt/snapsync
+sudo chmod go+rX /opt/snapsync
 
 if test -d /lib/systemd/system; then
     snapsync_gem=`bundler show snapsync`
