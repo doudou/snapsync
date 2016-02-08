@@ -30,7 +30,7 @@ module Snapsync
             path.mkpath
             flexmock(LocalTarget).should_receive(:read_config).and_raise(LocalTarget::NoUUIDError)
             created_target   = LocalTarget.new(path, create_if_needed: true)
-            yaml = YAML.load(File.read(path + "snapsync.config"))
+            yaml = YAML.load((path + "snapsync.config").read)
             assert_equal created_target.uuid, yaml['uuid']
         end
         it "raises if #read_config raises NoUUIDError and create_if_needed is false" do
