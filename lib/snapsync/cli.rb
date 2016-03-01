@@ -38,7 +38,7 @@ module Snapsync
                 if dir
                     dir = Pathname.new(dir)
                     begin
-                        return yield(LocalTarget.new(dir, create_if_needed: false))
+                        return yield(nil, LocalTarget.new(dir, create_if_needed: false))
                     rescue LocalTarget::InvalidTargetPath
                     end
 
@@ -269,9 +269,9 @@ for 10 days). snapsync understands the following period names: year month day ho
         def policy(dir, type, *options)
             handle_class_options
             # Parse the policy early to avoid breaking later
-            LocalTarget.parse_policy(*policy)
+            policy = normalize_policy([type, *options])
             each_target(dir) do |_, target|
-                target.change_policy(type, options)
+                target.change_policy(*policy)
                 target.write_config
             end
         end
