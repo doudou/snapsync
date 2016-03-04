@@ -174,12 +174,13 @@ module Snapsync
                 return
             end
 
-            s.snapshot_dir.rmtree
             Snapsync.info "Flushing data to disk"
             begin
                 Btrfs.popen("subvolume", "sync", self.dir.to_s)
             rescue Btrfs::Error
             end
+
+            s.snapshot_dir.rmtree
         end
     end
 end
