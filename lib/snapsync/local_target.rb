@@ -177,7 +177,7 @@ module Snapsync
             s.snapshot_dir.rmtree
             Snapsync.info "Flushing data to disk"
             begin
-                Btrfs.popen("subvolume", "sync", s.subvolume_dir.to_s)
+                Btrfs.popen("subvolume", "sync", self.dir.to_s)
             rescue Btrfs::Error
             end
         end
