@@ -28,18 +28,8 @@ module Snapsync
 
             deleted_snapshots = snapshots.sort_by(&:num).find_all do |s|
                 if !filtered_snapshots.include?(s)
-                    target.delete(s, dry_run: dry_run)
+                    target.delete(s, dry_run: dry_run, sync: true)
                     true
-                end
-            end
-
-            if !deleted_snapshots.empty?
-                Snapsync.info "Waiting for subvolumes to be deleted"
-                deleted_snapshots.each do |s|
-                    begin
-                        Btrfs.popen("subvolume", "sync", s.subvolume_dir.to_s)
-                    rescue Btrfs::Error
-                    end
                 end
             end
         end
