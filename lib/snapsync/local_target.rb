@@ -34,6 +34,10 @@ module Snapsync
         class InvalidUUIDError < InvalidTargetPath; end
         class NoUUIDError < InvalidUUIDError; end
 
+        def description
+            "local:#{dir}"
+        end
+
         def initialize(dir, create_if_needed: true)
             if !dir.directory?
                 raise ArgumentError, "#{dir} does not exist"

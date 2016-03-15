@@ -17,7 +17,7 @@ module Snapsync
         def create_synchronization_point
             config.create(
                 description: "synchronization snapshot for snapsync",
-                user_data: Hash['important' => 'yes', 'snapsync' => target.uuid])
+                user_data: Hash['important' => 'yes', 'snapsync-description' => target.description, 'snapsync' => target.uuid])
         end
 
         def remove_synchronization_points(except_last: true)
