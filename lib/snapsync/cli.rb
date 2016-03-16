@@ -150,29 +150,23 @@ policy for more information
             # Parse the policy option early to avoid breaking later
             begin
                 policy = normalize_policy(policy)
-            rescue Exception
+            rescue Exception => policy_validation_error
                 # Try to see if the user forgot to add the NAME option or added
                 # the name option but should not have
                 if options[:auto]
-                    valid_policy = begin normalize_policy(args[1..-1])
-                                       true
-                                   rescue InvalidConfiguration
-                                       false
-                                   end
-                    if valid_policy
+                    begin
+                        normalize_policy(args[1..-1])
                         raise ArgumentError, "--auto is set but it seems that you did not provide a name"
+                    rescue InvalidConfiguration
                     end
                 else
-                    valid_policy = begin normalize_policy(args[2..-1])
-                                       true
-                                   rescue InvalidConfiguration
-                                       false
-                                   end
-                    if valid_policy
+                    begin
+                        normalize_policy(args[2..-1])
                         raise ArgumentError, "--auto is not set but it seems that you provided a name"
+                    rescue InvalidConfiguration
                     end
                 end
-                raise ArgumentError, "invalid policy #{policy}"
+                raise policy_validation_error
             end
 
             dirs = Array.new
