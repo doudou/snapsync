@@ -28,7 +28,7 @@ module Snapsync
 
             deleted_snapshots = snapshots.sort_by(&:num).find_all do |s|
                 if !filtered_snapshots.include?(s)
-                    target.delete(s, dry_run: dry_run, sync: true)
+                    target.delete(s, dry_run: dry_run)
                     true
                 end
             end
