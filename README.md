@@ -71,6 +71,10 @@ provided by auto-sync, run 'snapsync' without arguments to get all the
 possibilities. Targets have configuration files that allow to fine-tune
 snapsync's automated behaviour to that effect.
 
+'''NOTE''' thor, the underlying library that handles snapsync's command line
+interface, has a bug in which the `--no-` prefix is often not recognized
+properly. Use e.g. `--all=f` instead of `--no-all`
+
 ## Future development
 
 The main two functionalities that I plan to add to snapsync are having a
