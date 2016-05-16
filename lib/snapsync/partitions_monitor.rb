@@ -30,6 +30,7 @@ module Snapsync
 
         def partition_of(dir)
             rel = Pathname.new("")
+            dir = dir.expand_path
             while !dir.mountpoint?
                 rel = dir.basename + rel
                 dir = dir.dirname
@@ -44,10 +45,11 @@ module Snapsync
                     str[0..-2].pack("U*")
                 end
                 if mount_points.include?(dir.to_s)
+                    binding.pry
                     return uuid, rel
                 end
             end
-            nil
+            raise ArgumentError, "cannot guess the partition UUID of the mountpoint #{dir} for #{dir + rel}"
         end
 
         def dirty!
