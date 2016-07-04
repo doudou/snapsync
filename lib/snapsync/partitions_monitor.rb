@@ -45,7 +45,6 @@ module Snapsync
                     str[0..-2].pack("U*")
                 end
                 if mount_points.include?(dir.to_s)
-                    binding.pry
                     return uuid, rel
                 end
             end
@@ -71,9 +70,6 @@ module Snapsync
             each_partition_with_filesystem.find do |name, dev|
                 fs = dev['org.freedesktop.UDisks2.Filesystem']
                 mp = fs['MountPoints']
-                if !mp.empty?
-                    binding.pry
-                end
                 # .map { |str| Pathname.new(str) }
                 mp.include?(dir)
             end
