@@ -153,13 +153,13 @@ policy for more information
             rescue Exception => policy_validation_error
                 # Try to see if the user forgot to add the NAME option or added
                 # the name option but should not have
-                if options[:auto]
+                if (args.size > 1) && options[:auto]
                     begin
                         normalize_policy(args[1..-1])
                         raise ArgumentError, "--auto is set but it seems that you did not provide a name"
                     rescue InvalidConfiguration
                     end
-                else
+                elsif args.size > 2
                     begin
                         normalize_policy(args[2..-1])
                         raise ArgumentError, "--auto is not set but it seems that you provided a name"

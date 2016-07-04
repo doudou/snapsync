@@ -144,7 +144,7 @@ module Snapsync
                 sync_policy = SyncLastPolicy
                 cleanup     = SyncLastPolicy
             else
-                raise InvalidConfiguration, "synchronization policy #{type} does not exist"
+                raise InvalidConfiguration, "synchronization policy '#{type}' does not exist"
             end
             sync_policy = sync_policy.from_config(options)
             cleanup =

@@ -7,11 +7,26 @@ module Snapsync
         subject { CLI.new }
         
         describe "init" do
-            it "raises without creating anything if the policy is invalid" do
+            it "reports an invalid policy with --auto" do
+                subject.options = Hash[auto: true, all: true]
                 e = assert_raises(ArgumentError) do
                     subject.init('name', 'dir', 'invalid')
                 end
-                assert(e.message =~ /invalid policy/, "expected message to be about an invalid policy but is '#{e.message}'")
+                assert(e.message =~ /synchronization policy 'invalid' does not exist/, "expected message to be about an invalid policy but is '#{e.message}'")
+            end
+            it "reports an invalid policy without --auto" do
+                subject.options = Hash[auto: false, all: false]
+                e = assert_raises(ArgumentError) do
+                    subject.init('dir', 'invalid')
+                end
+                assert(e.message =~ /synchronization policy 'invalid' does not exist/, "expected message to be about an invalid policy but is '#{e.message}'")
+            end
+            it "assumes that the user meant --auto if given at least 3 arguments and the policy is valid" do
+                subject.options = Hash[auto: false, all: false]
+                e = assert_raises(ArgumentError) do
+                    subject.init('name', 'dir', 'last')
+                end
+                assert(e.message =~ /--auto is not set but it seems that you provided a name/, "expected message to be about an invalid policy but is '#{e.message}'")
             end
             it "detects a missing NAME argument if --auto is given" do
                 subject.options = Hash[auto: true, all: true]
