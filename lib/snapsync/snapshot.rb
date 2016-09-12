@@ -77,21 +77,34 @@ module Snapsync
         #
         # This is an estimate of the size required to send this snapshot using
         # the given snapshot as parent
+        #
+        # @param [Snapshot] a reference snapshot, which would be used as parent
+        #   in the 'send' operation
+        # @return [Integer] the size in bytes of the difference between the
+        #   given snapshot and the current subvolume's state
         def size_diff_from(snapshot)
-            info = Btrfs.run('subvolume', 'show', snapshot.subvolume_dir.to_s)
-            info =~ /Generation[^:]*:\s+(\d+)/
-            size_diff_from_gen(Integer($1))
+            snapshot_gen = Btrfs.generation_of(snapshot.subvolume_dir)
+            size_diff_from_gen(snapshot_gen)
         end
 
-        # Compute the size of the snapshot
+        # Compute an estimate of the size of sending the whole subvolume
+        #
+        # @return [Integer] size in bytes
         def size
             size_diff_from_gen(0)
         end
 
+        # @api private
+        #
+        # Compute the size of the 'diff' between a generation and the
+        # subvolume's current state
+        #
+        # @param [Integer] gen the reference generation (the 'from' in the diff)
+        # @return [Integer] size in bytes
+        # @see size_diff_from size
         def size_diff_from_gen(gen)
-            new = Btrfs.run('subvolume', 'find-new', subvolume_dir.to_s, gen.to_s)
-            new.split("\n").inject(0) do |size, line|
-                if line.strip =~ /len (\d+)/
+            Btrfs.find_new(subvolume_dir, gen).inject(0) do |size, line|
+                if line =~ /len (\d+)/
                     size + Integer($1)
                 else size
                 end

@@ -38,25 +38,25 @@ module Snapsync
     #   end
     #
     module SelfTest
-        if defined? FlexMock
-            include FlexMock::ArgumentTypes
-            include FlexMock::MockContainer
-        end
-
         def setup
+            @tempdirs = Array.new
+            super
             # Setup code for all the tests
         end
 
         def teardown
-            if defined? FlexMock
-                flexmock_teardown
+            @tempdirs.each do |dir|
+                FileUtils.rm_rf dir
             end
             super
             # Teardown code for all the tests
+        end
+
+        def make_tmpdir
+            @tempdirs << Dir.mktmpdir
         end
     end
 end
 
 Minitest::Test.include Snapsync::SelfTest
-
 

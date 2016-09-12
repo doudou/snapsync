@@ -17,6 +17,9 @@ module Snapsync
             end
         end
 
+        class UnexpectedBtrfsOutput < Error
+        end
+
         # @api private
         #
         # A IO.popen-like API to btrfs subcommands
@@ -26,6 +29,7 @@ module Snapsync
             block_error, block_result = nil
             IO.popen(['btrfs', *args, err: err_w, **options], mode) do |io|
                 err_w.close
+
                 begin
                     block_result = yield(io)
                 rescue Error
@@ -56,8 +60,39 @@ module Snapsync
 
         def self.run(*args, **options)
             popen(*args, **options) do |io|
-                io.read
+                io.read.encode('utf-8', undef: :replace, invalid: :replace)
             end
+        end
+
+        # Facade for finding the generation of a subvolume using 'btrfs show'
+        #
+        # @param [Pathname] path the subvolume path
+        # @return [Integer] the subvolume's generation
+        def self.generation_of(path)
+            info = Btrfs.run('subvolume', 'show', path.to_s)
+            if info =~ /Generation[^:]*:\s+(\d+)/
+                Integer($1)
+            else
+                raise UnexpectedBtrfsOutput, "unexpected output for 'btrfs subvolume show', expected #{info} to contain a Generation: line"
+            end
+        end
+
+        # Facade for 'btrfs subvolume find-new'
+        #
+        # It computes what changed between a reference generation of a
+        # subvolume, and that subvolume's current state
+        #
+        # @param [String] subvolume_dir the subvolume target of find-new
+        # @param [Integer] last_gen the reference generation
+        #
+        # @overload find_new(subvolume_dir, last_gen)
+        #   @yieldparam [String] a line of the find-new output
+        #
+        # @overload find_new(subvolume_dir, last_gen)
+        #   @return [#each] an enumeration of the lines of the find-new output
+        def self.find_new(subvolume_dir, last_gen, &block)
+            run('subvolume', 'find-new', subvolume_dir.to_s, last_gen.to_s).
+                each_line(&block)
         end
     end
 end

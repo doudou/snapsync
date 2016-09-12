@@ -34,6 +34,32 @@ module Snapsync
             assert_equal Hash['important' => 'yes', 'test' => 'blabla'],
                 Snapshot.new(stub_snapshots_dir + "valid").user_data
         end
+
+        describe "#size_diff_from_gen" do
+            attr_reader :snapshot
+            before do
+                @snapshot = Snapshot.new(stub_snapshots_dir + "valid")
+            end
+
+            it "accumulates the length of each difference record" do
+                flexmock(Btrfs).should_receive(:find_new).
+                    with(stub_snapshots_dir + "valid" + "snapshot", 42).
+                    once.and_return [
+                        "inode 8992834 file offset 0 len 10 disk start 54989 offset 0 gen 32948 flags NONE fake/entry/",
+                        "inode 8992834 file offset 0 len 33 disk start 54254 offset 0 gen 509547 flags NONE another/fake/entry/"]
+
+                assert_equal 43, snapshot.size_diff_from_gen(42)
+            end
+
+            it "ignores non-matching lines" do
+                flexmock(Btrfs).should_receive(:find_new).
+                    with(stub_snapshots_dir + "valid" + "snapshot", 42).
+                    once.and_return [
+                        "something completely else",
+                        "inode 8992834 file offset 0 len 33 disk start 54254 offset 0 gen 509547 flags NONE another/fake/entry/"]
+                assert_equal 33, snapshot.size_diff_from_gen(42)
+            end
+        end
     end
 end
 
