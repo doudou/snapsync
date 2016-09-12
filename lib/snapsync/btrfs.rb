@@ -17,20 +17,20 @@ module Snapsync
             end
         end
 
+        # @api private
+        #
+        # A IO.popen-like API to btrfs subcommands
         def self.popen(*args, mode: 'r', raise_on_error: true, **options)
             err_r, err_w = IO.pipe
 
             block_error, block_result = nil
             IO.popen(['btrfs', *args, err: err_w, **options], mode) do |io|
                 err_w.close
-                if block_given?
-                    begin
-                        block_result = yield(io)
-                    rescue Error
-                        raise
-                    rescue Exception => block_error
-                    end
-                else io.read
+                begin
+                    block_result = yield(io)
+                rescue Error
+                    raise
+                rescue Exception => block_error
                 end
             end
 

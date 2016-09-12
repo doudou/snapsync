@@ -172,7 +172,7 @@ module Snapsync
             return if dry_run
 
             begin
-                Btrfs.popen("subvolume", "delete", '--commit-each', s.subvolume_dir.to_s)
+                Btrfs.run("subvolume", "delete", '--commit-each', s.subvolume_dir.to_s)
             rescue Btrfs::Error
                 Snapsync.warn "failed to remove snapshot at #{s.subvolume_dir}, keeping the rest of the snapshot"
                 return
@@ -180,7 +180,7 @@ module Snapsync
 
             Snapsync.info "Flushing data to disk"
             begin
-                Btrfs.popen("subvolume", "sync", self.dir.to_s)
+                Btrfs.run("subvolume", "sync", self.dir.to_s)
             rescue Btrfs::Error
             end
 

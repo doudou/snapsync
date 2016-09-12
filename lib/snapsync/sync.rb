@@ -38,9 +38,9 @@ module Snapsync
                 Snapsync.info "Removing partial snapshot at #{path}"
                 begin
                     if (path + "snapshot").exist?
-                        Btrfs.popen("subvolume", "delete", (path + "snapshot").to_s)
+                        Btrfs.run("subvolume", "delete", (path + "snapshot").to_s)
                     elsif (path + "snapshot.partial").exist?
-                        Btrfs.popen("subvolume", "delete", (path + "snapshot.partial").to_s)
+                        Btrfs.run("subvolume", "delete", (path + "snapshot.partial").to_s)
                     end
                 rescue Btrfs::Error => e
                     Snapsync.warn "failed to remove snapshot at #{path}, keeping the rest of the snapshot"
@@ -51,7 +51,7 @@ module Snapsync
                 path.rmtree
                 Snapsync.info "Flushing data to disk"
                 begin
-                    Btrfs.popen("subvolume", "sync", path.to_s)
+                    Btrfs.run("subvolume", "sync", path.to_s)
                 rescue Btrfs::Error
                 end
             end
