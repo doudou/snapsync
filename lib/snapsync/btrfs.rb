@@ -20,6 +20,10 @@ module Snapsync
         class UnexpectedBtrfsOutput < Error
         end
 
+        def self.btrfs_prog
+            ENV['BTRFS_PROG'] || 'btrfs'
+        end
+
         # @api private
         #
         # A IO.popen-like API to btrfs subcommands
@@ -27,7 +31,7 @@ module Snapsync
             err_r, err_w = IO.pipe
 
             block_error, block_result = nil
-            IO.popen(['btrfs', *args, err: err_w, **options], mode) do |io|
+            IO.popen([btrfs_prog, *args, err: err_w, **options], mode) do |io|
                 err_w.close
 
                 begin
