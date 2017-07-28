@@ -286,13 +286,19 @@ While it can easily be done manually, this command makes sure that the snapshots
         end
 
         desc "auto-sync", "automatic synchronization"
+        option :one_shot, desc: "do one synchronization and quit", type: :boolean,
+            default: false
         option :config_file, desc: "path to the config file (defaults to /etc/snapsync.conf)",
             default: '/etc/snapsync.conf'
         def auto_sync
             handle_class_options
             auto = AutoSync.new(SnapperConfig.default_config_dir)
             auto.load_config(Pathname.new(options[:config_file]))
-            auto.run
+            if options[:one_shot]
+                auto.sync
+            else
+                auto.run
+            end
         end
 
         desc 'list [DIR]', 'list the snapshots present on DIR. If DIR is omitted, tries to access all targets defined as auto-sync targets'

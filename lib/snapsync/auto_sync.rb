@@ -146,13 +146,17 @@ module Snapsync
             end
         end
 
+        def sync
+            each_available_autosync_target do |path, t|
+                Snapsync.info "sync-all on #{path} (partition #{t.partition_uuid})"
+                op = SyncAll.new(path, config_dir: config_dir)
+                op.run
+            end
+        end
+
         def run(period: 600)
             while true
-                each_available_autosync_target do |path, t|
-                    Snapsync.info "sync-all on #{path} (partition #{t.partition_uuid})"
-                    op = SyncAll.new(path, config_dir: config_dir)
-                    op.run
-                end
+                sync
                 Snapsync.info "done all declared autosync partitions, sleeping #{period}s"
                 sleep period
             end
