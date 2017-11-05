@@ -81,6 +81,19 @@ module Snapsync
             end
         end
 
+        # Facade for checking readonly-flag on snapshot using 'btrfs subvolume show'
+        #
+        # @param [Pathname] path the subvolume path
+        # @return [Boolean] if the snapshot is readonly
+        def self.readonly(path)
+            info = Btrfs.run('subvolume', 'show', path.to_s)
+            if info =~ /Flags[^:]*:\s+(-|\w+)/
+                "readonly" == $1.to_s
+            else
+                raise UnexpectedBtrfsOutput, "unexpected output for 'btrfs subvolume show', expected #{info} to contain a Flags: line"
+            end
+        end
+
         # Facade for 'btrfs subvolume find-new'
         #
         # It computes what changed between a reference generation of a
