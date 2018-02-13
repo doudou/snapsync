@@ -4,6 +4,7 @@ require 'pp'
 require 'securerandom'
 require 'rexml/document'
 require 'dbus'
+require 'date'
 require 'concurrent'
 
 require "snapsync/version"
