@@ -59,7 +59,7 @@ module Snapsync
             end
         end
 
-        desc 'sync CONFIG DIR', 'synchronizes the snapper configuration CONFIG with the snapsync target DIR'
+        desc 'sync <CONFIG_DIR>', 'synchronizes the snapper configuration CONFIG with the snapsync target DIR'
         option :autoclean, type: :boolean, default: nil,
             desc: 'whether the target should be cleaned of obsolete snapshots',
             long_desc: "The default is to use the value specified in the target's configuration file. This command line option allows to override the default"
@@ -71,7 +71,7 @@ module Snapsync
             Sync.new(config, target, autoclean: options[:autoclean]).run
         end
 
-        desc 'sync-all DIR', 'synchronizes all snapper configurations into corresponding subdirectories of DIR'
+        desc 'sync-all <DIR>', 'synchronizes all snapper configurations into corresponding subdirectories of DIR'
         option :autoclean, type: :boolean, default: nil,
             desc: 'whether the target should be cleaned of obsolete snapshots',
             long_desc: "The default is to use the value specified in the target's configuration file. This command line option allows to override the default"
@@ -83,7 +83,7 @@ module Snapsync
             op.run
         end
 
-        desc 'cleanup CONFIG DIR', 'cleans up the snapsync target DIR based on the policy set by the policy command'
+        desc 'cleanup [--debug] [--dry-run] <CONFIG_DIR>', 'cleans up the snapsync target DIR based on the policy set by the policy command'
         option :dry_run, type: :boolean, default: false
         def cleanup(dir)
             handle_class_options
@@ -112,7 +112,7 @@ module Snapsync
             end
         end
 
-        desc 'init [NAME] DIR [POLICY]', 'creates a synchronization target, optionally adding it to the auto-sync targets and specifying the synchronization and cleanup policies'
+        desc 'init [NAME] <DIR> [POLICY]', 'creates a synchronization target, optionally adding it to the auto-sync targets and specifying the synchronization and cleanup policies'
         long_desc <<-EOD
 NAME must be provided if DIR is to be added to the auto-sync targets (which
 is the default).
@@ -198,7 +198,7 @@ policy for more information
             end
         end
 
-        desc 'auto-add NAME DIR', "add DIR to the set of targets for auto-sync"
+        desc 'auto-add [NAME] <DIR>', "add DIR to the set of targets for auto-sync"
         option :automount, type: :boolean, default: true,
             desc: 'whether the supporting partition should be auto-mounted by snapsync when needed or not (the default is yes)'
         option :config_file, default: '/etc/snapsync.conf',
@@ -245,20 +245,22 @@ policy for more information
             autosync.write_config(conf_path)
         end
 
-        desc 'policy DIR TYPE [OPTIONS]', 'sets the synchronization and cleanup policy for the given target or targets'
+        desc 'policy <DIR> <TYPE> [OPTIONS]', 'sets the synchronization and cleanup policy for the given target or targets'
         long_desc <<-EOD
 This command sets the policy used to decide which snapshots to synchronize to
 the target, and which to not synchronize.
 
-Three policy types can be used: default, last and timeline
+TYPE: Three policy types can be used: default, last, or timeline
 
-The default policy takes no argument. It will synchronize all snapshots present in the source, and do no cleanup
+The 'default' policy takes no argument. It will synchronize all snapshots present in the source, and do no cleanup
 
-The last policy takes no argument. It will synchronize (and keep) only the last snapshot
+The 'last' policy takes no argument. It will synchronize (and keep) only the last snapshot
 
-The timeline policy takes periods of time as argument (as e.g. day 10 or month 20). It will keep at least
+The 'timeline' policy takes periods of time as argument (as e.g. day 10 or month 20). It will keep at least
 one snapshot for each period, and for the duration specified (day 10 tells to keep one snapshot per day
-for 10 days). snapsync understands the following period names: year month day hour.
+for 10 days). snapsync understands the following period names: year, month, week, day, hour.
+
+OPTIONS := { year {int} | month {int} | week {int} | day {int} | hour {int} }
         EOD
         def policy(dir, type, *options)
             handle_class_options
@@ -270,7 +272,7 @@ for 10 days). snapsync understands the following period names: year month day ho
             end
         end
 
-        desc 'destroy DIR', 'destroys a snapsync target'
+        desc 'destroy <DIR>', 'destroys a snapsync target'
         long_desc <<-EOD
 While it can easily be done manually, this command makes sure that the snapshots are properly deleted
         EOD

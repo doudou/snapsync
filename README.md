@@ -7,7 +7,7 @@ snapper snapshot directory to a different location using btrfs send and
 receive.
 
 It can be used in two modes:
- - in manual mode, you run snapsync 
+ - in manual mode, you run snapsync
 
 ## Installation
 
@@ -15,7 +15,7 @@ You need to make sure that you've installed Ruby's bundler. On Ubuntu, run
     $ apt install bundler
 
 Then, the following will install snapsync in /opt/snapsync
-    
+
     $ wget https://raw.githubusercontent.com/doudou/snapsync/master/install.sh
     $ sh install.sh
 
@@ -63,6 +63,15 @@ beginning, but is obviously not a very good long-term strategy ;-)
 Policies can be set at initialization time by passing additional arguments to
 'snapsync init', or later with 'snapsync policy'. Run
 'snapsync help init' and 'snapsync help policy' for more information.
+
+E.g. If you want to keep the most recent 23 hourly, 6 daily, 3 weekly, 11
+monthly, and 10 yearly snapshots:
+
+    $ snapsync policy /path/to/the/drive/snapsync/config_dir hour 23 day 6 week 3 month 11 year 10
+
+If you only want the most 10 most recent day's snapshots:
+
+    $ snapsync policy /path/to/the/drive/snapsync/config_dir day 10
 
 ## Manual usage
 
