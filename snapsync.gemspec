@@ -23,6 +23,7 @@ EOD
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
+  spec.add_dependency 'rexml', '~> 3.2.0'
   spec.add_dependency 'logging', '~> 2.0', ">= 2.0.0"
   spec.add_dependency 'concurrent-ruby', '~> 0.9.0', '>= 0.9'
   spec.add_dependency 'ruby-dbus', "~> 0.11.0", ">= 0.11"
