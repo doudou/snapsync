@@ -94,7 +94,13 @@ module Snapsync
                 uuid = partition['IdUUID']
 
                 if monitored_partitions.include?(uuid)
-                    all[uuid] = dev['org.freedesktop.UDisks2.Filesystem']
+                    fs = dev['org.freedesktop.UDisks2.Filesystem']
+
+                    # If it is a btrfs raid, it will have multiple partitions with the same uuid, but only one will be
+                    # mounted.
+                    next if all.has_key?(uuid) and all[uuid]['MountPoints'].size > 0
+
+                    all[uuid] = fs
                 end
             end
 
