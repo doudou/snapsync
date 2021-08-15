@@ -36,19 +36,28 @@ module Snapsync
                 dir = dir.dirname
             end
 
+            # Collect partitions list from udisk
+            parts = []
             each_partition_with_filesystem do |name, dev|
                 partition = dev['org.freedesktop.UDisks2.Block']
                 uuid = partition['IdUUID']
-
                 fs = dev['org.freedesktop.UDisks2.Filesystem']
                 mount_points = fs['MountPoints'].map do |str|
                     str[0..-2].pack("U*")
                 end
-                if mount_points.include?(dir.to_s)
-                    return uuid, rel
-                end
+                parts.push([name, dev, uuid, mount_points])
             end
-            raise ArgumentError, "cannot guess the partition UUID of the mountpoint #{dir} for #{dir + rel}"
+
+            # Find any partition that is a parent of the folder we are looking at
+            loop do
+                parts.each do |name, dev, uuid, mount_points|
+                    if mount_points.include?(dir.to_s)
+                        return uuid, rel
+                    end
+                end
+                raise ArgumentError, "cannot guess the partition UUID of the mountpoint #{dir} for #{dir + rel}" if dir.to_s == '/'
+                dir = dir.parent
+            end
         end
 
         def dirty!
