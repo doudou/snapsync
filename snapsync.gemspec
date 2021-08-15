@@ -25,12 +25,12 @@ EOD
 
   spec.add_dependency 'rexml', '~> 3.2.0'
   spec.add_dependency 'logging', '~> 2.0', ">= 2.0.0"
-  spec.add_dependency 'concurrent-ruby', '~> 0.9.0', '>= 0.9'
-  spec.add_dependency 'ruby-dbus', "~> 0.11.0", ">= 0.11"
-  spec.add_dependency 'thor', "~> 0.19.0", ">= 0.19.1"
+  spec.add_dependency 'concurrent-ruby', '~> 1.1'
+  spec.add_dependency 'ruby-dbus', "~> 0.16.0"
+  spec.add_dependency 'thor', "~> 1.1"
 
-  spec.add_development_dependency "bundler", "~> 1.10"
-  spec.add_development_dependency "rake", "~> 10.0"
+  spec.add_development_dependency "bundler", "~> 2"
+  spec.add_development_dependency "rake", "~> 13"
   spec.add_development_dependency "minitest", "~> 5.0", ">= 5.7"
   spec.add_development_dependency "flexmock", "~> 2.0", ">= 2.0"
   spec.add_development_dependency "fakefs"
