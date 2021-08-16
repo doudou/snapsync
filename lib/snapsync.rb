@@ -1,3 +1,5 @@
+require 'uri/ssh_git'
+
 require 'pathname'
 require 'logging'
 require 'pp'

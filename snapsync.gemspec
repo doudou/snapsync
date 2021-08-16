@@ -28,6 +28,7 @@ EOD
   spec.add_dependency 'concurrent-ruby', '~> 1.1'
   spec.add_dependency 'ruby-dbus', "~> 0.16.0"
   spec.add_dependency 'thor', "~> 1.1"
+  spec.add_dependency 'uri-ssh_git', "~> 2.0.0"
 
   spec.add_development_dependency "bundler", "~> 2"
   spec.add_development_dependency "rake", "~> 13"
