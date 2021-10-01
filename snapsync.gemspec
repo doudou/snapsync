@@ -29,10 +29,13 @@ EOD
   spec.add_dependency 'ruby-dbus', "~> 0.16.0"
   spec.add_dependency 'thor', "~> 1.1"
   spec.add_dependency 'uri-ssh_git', "~> 2.0.0"
+  spec.add_dependency 'net-ssh', "~> 6.1.0"
+  spec.add_dependency 'net-sftp', "~> 3.0.0"
 
   spec.add_development_dependency "bundler", "~> 2"
   spec.add_development_dependency "rake", "~> 13"
   spec.add_development_dependency "minitest", "~> 5.0", ">= 5.7"
   spec.add_development_dependency "flexmock", "~> 2.0", ">= 2.0"
   spec.add_development_dependency "fakefs"
+  spec.add_development_dependency "irb"
 end

@@ -1,4 +1,6 @@
 require 'uri/ssh_git'
+require 'net/ssh'
+require 'net/sftp'
 
 require 'pathname'
 require 'logging'
