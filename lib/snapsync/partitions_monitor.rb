@@ -131,7 +131,7 @@ module Snapsync
             return enum_for(__method__) if !block_given?
             udisk.root['org']['freedesktop']['UDisks2']['block_devices'].each do |device_name, _|
                 dev = udisk.object("/org/freedesktop/UDisks2/block_devices/#{device_name}")
-                if dev['org.freedesktop.UDisks2.Block'] && dev['org.freedesktop.UDisks2.Filesystem']
+                if dev.has_iface?('org.freedesktop.UDisks2.Block') && dev.has_iface?('org.freedesktop.UDisks2.Filesystem')
                     yield(device_name, dev)
                 end
             end
