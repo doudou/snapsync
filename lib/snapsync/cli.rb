@@ -46,7 +46,7 @@ module Snapsync
                         yield(config, target)
                     end
                 else
-                    autosync = AutoSync.load_default
+                    autosync = AutoSync.new
                     autosync.each_available_target do |config, target|
                         yield(config, target)
                     end
@@ -209,10 +209,7 @@ policy for more information
             uuid, relative = partition_of(Snapsync::path(dir))
             conf_path = Pathname.new(options[:config_file])
 
-            autosync = AutoSync.new
-            if conf_path.exist?
-                autosync.load_config(conf_path)
-            end
+            autosync = AutoSync.new config_from_name: conf_path
             exists = autosync.each_autosync_target.find do |t|
                 t.partition_uuid == uuid && t.path.cleanpath == relative.cleanpath
             end
@@ -241,8 +238,7 @@ policy for more information
         desc 'auto-remove NAME', "remove a target from auto-sync by name"
         def auto_remove(name)
             conf_path = Pathname.new('/etc/snapsync.conf')
-            autosync = AutoSync.new
-            autosync.load_config(conf_path)
+            autosync = AutoSync.new snapsync_config_file: conf_path
             autosync.remove(name: name)
             autosync.write_config(conf_path)
         end
@@ -296,8 +292,7 @@ While it can easily be done manually, this command makes sure that the snapshots
             default: '/etc/snapsync.conf'
         def auto_sync
             handle_class_options
-            auto = AutoSync.new(SnapperConfig.default_config_dir)
-            auto.load_config(Pathname.new(options[:config_file]))
+            auto = AutoSync.new(SnapperConfig.default_config_dir, Pathname.new(options[:config_file]))
             if options[:one_shot]
                 auto.sync
             else

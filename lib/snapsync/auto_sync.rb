@@ -14,19 +14,17 @@ module Snapsync
 
         DEFAULT_CONFIG_PATH = Pathname.new('/etc/snapsync.conf')
 
-        def self.load_default
-            result = new
-            result.load_config
-            result
-        end
-
-        def initialize(config_dir = SnapperConfig.default_config_dir)
+        def initialize(config_dir = SnapperConfig.default_config_dir, snapsync_config_file = DEFAULT_CONFIG_PATH)
             @config_dir = config_dir
             @targets = Hash.new
             @partitions = PartitionsMonitor.new
+
+            if snapsync_config_file.exist?
+                load_config snapsync_config_file
+            end
         end
 
-        def load_config(path = DEFAULT_CONFIG_PATH)
+        private def load_config(path = DEFAULT_CONFIG_PATH)
             conf = YAML.load(path.read) || Array.new
             parse_config_migrate_if_needed(path, conf)
         end
