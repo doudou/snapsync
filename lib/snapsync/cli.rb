@@ -145,7 +145,9 @@ policy for more information
                 end
                 dir, *policy = *args
             end
-            dir = Pathname.new(dir)
+
+            dir = Snapsync::path(dir)
+            remote = dir.instance_of? RemotePathname
 
             # Parse the policy option early to avoid breaking later
             begin
@@ -204,7 +206,7 @@ policy for more information
         option :config_file, default: '/etc/snapsync.conf',
             desc: 'the configuration file that should be updated'
         def auto_add(name, dir)
-            uuid, relative = partition_of(Pathname.new(dir))
+            uuid, relative = partition_of(Snapsync::path(dir))
             conf_path = Pathname.new(options[:config_file])
 
             autosync = AutoSync.new

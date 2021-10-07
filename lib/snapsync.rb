@@ -97,5 +97,18 @@ end
 
 module Snapsync
     install_root_logging(forward: true)
+
+    # @param [String] dir
+    def self.path(dir)
+        if dir.instance_of? RemotePathname or dir.include? ':'
+            begin
+                RemotePathname.new(dir)
+            rescue URI::InvalidComponentError
+                Pathname.new(dir)
+            end
+        else
+            Pathname.new dir
+        end
+    end
 end
 

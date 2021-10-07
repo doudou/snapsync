@@ -34,7 +34,7 @@ module Snapsync
             conf.each do |hash|
                 target = AutoSyncTarget.new
                 hash.each { |k, v| target[k] = v }
-                target.path = Pathname.new(target.path)
+                target.path = Snapsync::path(target.path)
                 add(target)
             end
         end
@@ -80,7 +80,7 @@ module Snapsync
 
                 mp = fs['MountPoints'].first
                 if mp
-                    mp = Pathname.new(mp[0..-2].pack("U*"))
+                    mp = Snapsync::path(mp[0..-2].pack("U*"))
                 end
 
                 begin
