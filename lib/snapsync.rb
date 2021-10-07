@@ -20,6 +20,8 @@ require "snapsync/local_target"
 require "snapsync/local_sync"
 require 'snapsync/cleanup'
 
+require 'snapsync/remote_pathname'
+
 require 'snapsync/default_sync_policy'
 require 'snapsync/timeline_sync_policy'
 require 'snapsync/sync_last_policy'
