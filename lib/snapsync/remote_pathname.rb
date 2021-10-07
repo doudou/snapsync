@@ -60,6 +60,15 @@ module Snapsync
       Net::SSH.start(uri.host, uri.user, password: uri.password, &block)
     end
 
+    def exist?
+      begin
+        sftp_f.open(uri.path).close
+        return true
+      rescue Net::SFTP::StatusException
+        return false
+      end
+    end
+
     def directory?
       begin
         sftp_f.directory? uri.path
@@ -91,14 +100,41 @@ module Snapsync
       o
     end
 
+    def each_child(with_directory=true, &block)
+      raise 'Only supports default value for with_directory' if not with_directory
+
+      sftp.dir.foreach(uri.path) do |entry|
+        next if entry.name == '.' or entry.name == '..'
+
+        o = self.dup
+        o.uri.path = o.uri.path + entry.name
+        yield o
+      end
+    end
+
     def expand_path
       o = self.dup
       o.uri.path = ssh.exec!(Shellwords.join ['readlink', '-f', uri.path]).chomp
       o
     end
 
+    def cleanpath
+      o = self.dup
+      o.uri.path = Pathname.new(uri.path).cleanpath.to_s
+      o
+    end
+
+    def mkdir
+      puts 'mkdir', uri
+      sftp.mkdir!(uri.path)
+    end
+
     def mkpath
-      sftp.mkdir(uri.path)
+      sftp.mkdir!(uri.path)
+    end
+
+    def rmtree
+      raise 'Failed' unless ssh.exec!(Shellwords.join ['rm','-r', uri.path]).exitstatus == 0
     end
 
     def +(path)
@@ -116,7 +152,11 @@ module Snapsync
     end
 
     def open(flags, &block)
-      sftp_f.open uri.path, flags, block
+      sftp_f.open uri.path, flags, &block
+    end
+
+    def touch
+      raise 'Failed' unless ssh.exec!(Shellwords.join ['touch', uri.path]).exitstatus == 0
     end
 
     def to_s
@@ -130,10 +170,16 @@ module Snapsync
 end
 
 # We monkey-patch this in to be able to tell machine-specific poth
+class Path < Pathname
+end
 
 class Pathname
   def path_part
     to_s
+  end
+
+  def touch
+    FileUtils.touch(to_s)
   end
 end
 
