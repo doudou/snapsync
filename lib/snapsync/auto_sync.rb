@@ -5,7 +5,8 @@ module Snapsync
     # partition availability, and will run sync-all on each (declared) targets
     # when they are available, optionally auto-mounting them
     class AutoSync
-        AutoSyncTarget = Struct.new :partition_uuid, :path, :automount, :name
+        # @attribute [String] type One of ['local', 'remote-ssh']
+        AutoSyncTarget = Struct.new :partition_uuid, :path, :automount, :name, :type
 
         attr_reader :config_dir
         attr_reader :targets
@@ -27,11 +28,41 @@ module Snapsync
 
         def load_config(path = DEFAULT_CONFIG_PATH)
             conf = YAML.load(path.read) || Array.new
-            parse_config(conf)
+            parse_config_migrate_if_needed(path, conf)
         end
 
-        def parse_config(conf)
-            conf.each do |hash|
+        private def parse_config_migrate_if_needed(path, conf)
+            migrated = false
+            if conf.is_a? Array
+                # Version 1
+                conf = config_migrate_v1_v2(conf)
+                migrated = true
+            elsif conf['version'] != 2
+                raise Error.new, 'Unknown snapsync config version: %d ' % [conf.version]
+            end
+            parse_config(conf)
+            if migrated
+                write_config(path)
+            end
+        end
+
+        private def config_migrate_v1_v2(conf)
+            Snapsync.info "Migrating config from version 1 to version 2"
+            targets = conf.map do |hash|
+                # Fallback to default if target type not defined (maybe older config)
+                if target.type.nil?
+                    target.type = 'local'
+                end
+                target
+            end
+            {
+              'version' => 2,
+              'targets' => targets
+            }
+        end
+
+        private def parse_config(conf)
+            conf['targets'].each do |hash|
                 target = AutoSyncTarget.new
                 hash.each { |k, v| target[k] = v }
                 target.path = Snapsync::path(target.path)
@@ -40,12 +71,15 @@ module Snapsync
         end
 
         def write_config(path)
-            data = each_autosync_target.map do |target|
+            data = {
+              'version' => 2,
+              'targets' => each_autosync_target.map do |target|
                 Hash['partition_uuid' => target.partition_uuid,
                      'path' => target.path.to_s,
                      'automount' => !!target.automount,
                      'name' => target.name]
-            end
+              end
+            }
             File.open(path, 'w') do |io|
                 YAML.dump(data, io)
             end
