@@ -21,6 +21,7 @@ require "snapsync/local_sync"
 require 'snapsync/cleanup'
 
 require 'snapsync/remote_pathname'
+require 'snapsync/ssh_popen'
 
 require 'snapsync/default_sync_policy'
 require 'snapsync/timeline_sync_policy'
@@ -109,10 +110,10 @@ module Snapsync
             begin
                 RemotePathname.new(dir)
             rescue URI::InvalidComponentError
-                Pathname.new(dir)
+                LocalPathname.new(dir)
             end
         else
-            Pathname.new dir
+            LocalPathname.new dir
         end
     end
 end
