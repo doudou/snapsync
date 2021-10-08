@@ -104,7 +104,7 @@ module Snapsync
             # initialized properly
             success = false
 
-            File.open(target_snapshot_dir + "info.xml", 'w') do |io|
+            (target_snapshot_dir + "info.xml").open('w') do |io|
                 io.write (src.snapshot_dir + "info.xml").read
             end
 
