@@ -7,8 +7,37 @@ module Snapsync
         attr_reader :monitored_partitions
         attr_reader :known_partitions
 
-        def initialize
-            dbus = DBus::SystemBus.instance
+        # @param [RemotePathname] machine Remote machine to connect to
+        def initialize(machine = nil)
+            if machine.nil?
+                dbus = DBus::SystemBus.instance
+            else
+                sock_path = '/tmp/snapsync_%04d_remote.sock' % rand(10000)
+
+
+                ready = Concurrent::AtomicBoolean.new(false)
+                @ssh_thr = Thread.new do
+                    machine.dup_ssh do |ssh|
+                        puts 'started'
+                        @ssh = ssh
+                        # log = Logger.new(STDOUT)
+                        # log.level = Logger::DEBUG
+                        # ssh.logger = log
+                        # ssh.logger.sev_threshold=Logger::Severity::DEBUG
+                        ssh.forward.local_socket(sock_path, '/var/run/dbus/system_bus_socket')
+                        ObjectSpace.define_finalizer(@ssh, proc {
+                            File.delete sock_path
+                        })
+                        ready.make_true
+                        ssh.loop { true }
+                    end
+                end
+                while ready.false?
+                    sleep 0.001
+                end
+
+                dbus = DBus::RemoteBus.new "unix:path=#{sock_path}"
+            end
             @udisk = dbus.service('org.freedesktop.UDisks2')
             udisk.introspect
 
@@ -28,6 +57,7 @@ module Snapsync
             monitored_partitions << partition_uuid.to_str
         end
 
+        # @return [String, Snapsync::Path, Pathname] uuid dir rel
         def partition_of(dir)
             rel = Pathname.new("")
             dir = dir.expand_path
@@ -45,17 +75,17 @@ module Snapsync
                 mount_points = fs['MountPoints'].map do |str|
                     str[0..-2].pack("U*")
                 end
-                parts.push([name, dev, uuid, mount_points])
+                parts.push([name, uuid, mount_points])
             end
 
             # Find any partition that is a parent of the folder we are looking at
             loop do
-                parts.each do |name, dev, uuid, mount_points|
-                    if mount_points.include?(dir.to_s)
-                        return uuid, rel
+                parts.each do |name, uuid, mount_points|
+                    if mount_points.include?(dir.path_part)
+                        return uuid, dir, rel
                     end
                 end
-                raise ArgumentError, "cannot guess the partition UUID of the mountpoint #{dir} for #{dir + rel}" if dir.to_s == '/'
+                raise ArgumentError, "cannot guess the partition UUID of the mountpoint #{dir} for #{dir + rel}" if dir.path_part == '/'
                 dir = dir.parent
             end
         end
