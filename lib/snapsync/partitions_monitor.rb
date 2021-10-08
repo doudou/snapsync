@@ -18,7 +18,6 @@ module Snapsync
                 ready = Concurrent::AtomicBoolean.new(false)
                 @ssh_thr = Thread.new do
                     machine.dup_ssh do |ssh|
-                        puts 'started'
                         @ssh = ssh
                         # log = Logger.new(STDOUT)
                         # log.level = Logger::DEBUG
