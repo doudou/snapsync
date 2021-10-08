@@ -9,14 +9,15 @@ module Snapsync
                 w.flush
                 w.close
                 flexmock(IO).should_receive(:popen).and_yield(r)
-                assert_equal "\uFFFD\n\uFFFD", Btrfs.run
+                assert_equal "\uFFFD\n\uFFFD", Btrfs.new(Snapsync::path '/').run
             end
         end
     end
 
     describe ".generation_of" do
         it "extracts the subvoume current generation" do
-            flexmock(Btrfs).should_receive(:run).
+            btrfs = Btrfs.new(Snapsync::path '/')
+            flexmock(btrfs).should_receive(:run).
                 with('subvolume', 'show', '/path/to/subvolume').
                 and_return <<-END_OF_OUTPUT
 /
@@ -38,14 +39,15 @@ module Snapsync
                                 .snapshots/4300/snapshot
 		END_OF_OUTPUT
 
-	    assert_equal 526059, Btrfs.generation_of(Pathname.new('/path/to/subvolume'))
+	        assert_equal 526059, btrfs.generation_of(Pathname.new('/path/to/subvolume'))
         end
 
         it "raises UnexpectedBtrfsOutput if the output does not contain a Generation line" do
-            flexmock(Btrfs).should_receive(:run).
+            btrfs = Btrfs.new(Snapsync::path '/')
+            flexmock(btrfs).should_receive(:run).
                 and_return ""
             assert_raises(Btrfs::UnexpectedBtrfsOutput) do
-                Btrfs.generation_of(Pathname.new('/path/to/subvolume'))
+                btrfs.generation_of(Pathname.new('/path/to/subvolume'))
             end
         end
     end
