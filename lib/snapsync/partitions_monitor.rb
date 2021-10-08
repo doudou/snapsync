@@ -19,10 +19,12 @@ module Snapsync
                 @ssh_thr = Thread.new do
                     machine.dup_ssh do |ssh|
                         @ssh = ssh
-                        # log = Logger.new(STDOUT)
-                        # log.level = Logger::DEBUG
-                        # ssh.logger = log
-                        # ssh.logger.sev_threshold=Logger::Severity::DEBUG
+                        if Snapsync.SSH_DEBUG
+                            log = Logger.new(STDOUT)
+                            log.level = Logger::DEBUG
+                            ssh.logger = log
+                            ssh.logger.sev_threshold=Logger::Severity::DEBUG
+                        end
                         ssh.forward.local_socket(sock_path, '/var/run/dbus/system_bus_socket')
                         ObjectSpace.define_finalizer(@ssh, proc {
                             File.delete sock_path
