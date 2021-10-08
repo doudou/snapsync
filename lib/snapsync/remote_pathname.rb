@@ -1,7 +1,96 @@
 require 'weakref'
 
+class Pathname
+  def parent_mountpoint
+    dir = self.dup
+    while !dir.mountpoint?
+      dir = dir.parent
+    end
+    dir
+  end
+
+  def path_part
+    to_s
+  end
+
+  def touch
+    FileUtils.touch(to_s)
+  end
+end
+
 module Snapsync
-  class RemotePathname
+  class AgnosticPath
+    def parent_mountpoint
+      dir = self.dup
+      while !dir.mountpoint?
+        dir = dir.parent
+      end
+      dir
+    end
+
+    def exist?
+      raise NotImplementedError
+    end
+    def file?
+      raise NotImplementedError
+    end
+    def directory?
+      raise NotImplementedError
+    end
+    def mountpoint?
+      raise NotImplementedError
+    end
+    def basename
+      raise NotImplementedError
+    end
+    def dirname
+      raise NotImplementedError
+    end
+    def parent
+      raise NotImplementedError
+    end
+    def each_child
+      raise NotImplementedError
+    end
+    def expand_path
+      raise NotImplementedError
+    end
+    def cleanpath
+      raise NotImplementedError
+    end
+    def mkdir
+      raise NotImplementedError
+    end
+    def mkpath
+      raise NotImplementedError
+    end
+    def rmtree
+      raise NotImplementedError
+    end
+    def +(path)
+      raise NotImplementedError
+    end
+    def read
+      raise NotImplementedError
+    end
+    def open(flags, &block)
+      raise NotImplementedError
+    end
+    def touch
+      raise NotImplementedError
+    end
+
+    # @return [String]
+    def path_part
+      raise NotImplementedError
+    end
+  end
+
+  # Ideally this would also inherit from AgnosticPath...
+  class LocalPathname < Pathname
+  end
+
+  class RemotePathname < AgnosticPath
 
     # @return [URI::SshGit::Generic]
     attr_reader :uri
@@ -61,6 +150,15 @@ module Snapsync
     end
 
     def exist?
+      begin
+        sftp_f.open(uri.path).close
+        return true
+      rescue Net::SFTP::StatusException
+        return directory?
+      end
+    end
+
+    def file?
       begin
         sftp_f.open(uri.path).close
         return true
@@ -125,7 +223,6 @@ module Snapsync
     end
 
     def mkdir
-      puts 'mkdir', uri
       sftp.mkdir!(uri.path)
     end
 
@@ -159,34 +256,16 @@ module Snapsync
       raise 'Failed' unless ssh.exec!(Shellwords.join ['touch', uri.path]).exitstatus == 0
     end
 
+    def path_part
+      uri.path
+    end
+
     def to_s
       uri.to_s
     end
 
     def inspect
       uri.to_s
-    end
-  end
-end
-
-# We monkey-patch this in to be able to tell machine-specific poth
-class Path < Pathname
-end
-
-class Pathname
-  def path_part
-    to_s
-  end
-
-  def touch
-    FileUtils.touch(to_s)
-  end
-end
-
-module Snapsync
-  class RemotePathname
-    def path_part
-      uri.path
     end
   end
 end
