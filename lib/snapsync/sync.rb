@@ -28,7 +28,7 @@ module Snapsync
         # One usually wants to call {#run}, which also takes care of running
         # cleanup if {#autoclean?} is true
         def sync
-            LocalSync.new(config, target).sync
+            SnapshotTransfer.new(config, target).sync
         end
 
         def remove_partially_synchronized_snapshots

@@ -1,6 +1,6 @@
 module Snapsync
-    # Synchronization between local file systems
-    class LocalSync
+    # Snapshot transfer between two btrfs filesystems
+    class SnapshotTransfer
         # The snapper configuration we should synchronize
         # 
         # @return [SnapperConfig]
@@ -10,10 +10,10 @@ module Snapsync
         # @return [SyncTarget]
         attr_reader :target
 
-        # @return [Btrfs]
+        # @return [Btrfs] src filesystem
         attr_reader :btrfs_src
 
-        # @return [Btrfs]
+        # @return [Btrfs] dest filesystem
         attr_reader :btrfs_dest
         
         def initialize(config, target)

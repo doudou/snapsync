@@ -17,7 +17,7 @@ require 'snapsync/btrfs'
 require "snapsync/snapper_config"
 require "snapsync/snapshot"
 require "snapsync/sync_target"
-require "snapsync/local_sync"
+require "snapsync/snapshot_transfer"
 require 'snapsync/cleanup'
 
 require 'snapsync/remote_pathname'
