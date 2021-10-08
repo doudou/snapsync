@@ -53,9 +53,9 @@ module Snapsync
                 end
             end
 
+            # @return [String, Snapsync::Path, Pathname] uuid, mountpoint, relative
             def partition_of(dir)
-                partitions = PartitionsMonitor.new
-                PartitionsMonitor.new.partition_of(dir)
+                PartitionsMonitor.new(dir).partition_of(dir)
             end
         end
 
@@ -206,7 +206,7 @@ policy for more information
         option :config_file, default: '/etc/snapsync.conf',
             desc: 'the configuration file that should be updated'
         def auto_add(name, dir)
-            uuid, relative = partition_of(Snapsync::path(dir))
+            uuid, mountpoint, relative = partition_of(Snapsync::path(dir))
             conf_path = Pathname.new(options[:config_file])
 
             autosync = AutoSync.new config_from_name: conf_path
@@ -230,7 +230,7 @@ policy for more information
                 end
                 exists.name ||= name
             else
-                autosync.add AutoSync::AutoSyncTarget.new(uuid, relative, options[:automount], name)
+                autosync.add AutoSync::AutoSyncTarget.new(uuid, mountpoint, relative, options[:automount], name)
             end
             autosync.write_config(conf_path)
         end

@@ -5,8 +5,7 @@ module Snapsync
     # partition availability, and will run sync-all on each (declared) targets
     # when they are available, optionally auto-mounting them
     class AutoSync
-        # @attribute [String] type One of ['local', 'remote-ssh']
-        AutoSyncTarget = Struct.new :partition_uuid, :path, :automount, :name, :type
+        AutoSyncTarget = Struct.new :partition_uuid, :mountpath, :relative, :automount, :name
 
         attr_reader :config_dir
         attr_reader :targets
@@ -71,11 +70,8 @@ module Snapsync
         def write_config(path)
             data = {
               'version' => 2,
-              'targets' => each_autosync_target.map do |target|
-                Hash['partition_uuid' => target.partition_uuid,
-                     'path' => target.path.to_s,
-                     'automount' => !!target.automount,
-                     'name' => target.name]
+              'targets' => each_autosync_target do |target|
+                  target.to_h
               end
             }
             File.open(path, 'w') do |io|
@@ -85,7 +81,7 @@ module Snapsync
 
         # Enumerates the declared autosync targets
         #
-        # @yieldparam [AutoSync] target
+        # @yieldparam [AutoSyncTarget] target
         # @return [void]
         def each_autosync_target
             return enum_for(__method__) if !block_given?
@@ -163,6 +159,7 @@ module Snapsync
             end
         end
 
+        # @param [AutoSyncTarget] target
         def add(target)
             targets[target.partition_uuid] ||= Array.new
             targets[target.partition_uuid] << target
