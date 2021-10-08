@@ -54,8 +54,12 @@ module Snapsync
 
         rescue Error => e
             prefix = args.join(" ")
-            lines = err_r.readlines.map do |line|
-                "#{prefix}: #{line.chomp}"
+            begin
+                lines = err_r.readlines.map do |line|
+                    "#{prefix}: #{line.chomp}"
+                end
+            rescue IOError
+                lines = []
             end
             raise Error.new(e.error_lines + lines), e.message, e.backtrace
 
