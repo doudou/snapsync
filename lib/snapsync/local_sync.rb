@@ -79,7 +79,7 @@ module Snapsync
                 else
                     target_snapshot_dir.mkdir
                 end
-                FileUtils.touch(partial_marker_path.to_s)
+                partial_marker_path.touch
             end
 
             if copy_snapshot(target_snapshot_dir, src, parent: parent)
