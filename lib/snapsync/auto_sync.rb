@@ -8,6 +8,7 @@ module Snapsync
         AutoSyncTarget = Struct.new :partition_uuid, :mountpath, :relative, :automount, :name
 
         attr_reader :config_dir
+        # @return [Hash<String,Array<AutoSyncTarget>>]
         attr_reader :targets
         attr_reader :partitions
 
@@ -62,7 +63,8 @@ module Snapsync
             conf['targets'].each do |hash|
                 target = AutoSyncTarget.new
                 hash.each { |k, v| target[k] = v }
-                target.path = Snapsync::path(target.path)
+                target.mountpath = Snapsync::path(target.mountpath)
+                target.relative = Snapsync::path(target.relative)
                 add(target)
             end
         end
@@ -70,8 +72,14 @@ module Snapsync
         def write_config(path)
             data = {
               'version' => 2,
-              'targets' => each_autosync_target do |target|
-                  target.to_h
+              'targets' => each_autosync_target.map do |target|
+                  target.to_h do |k,v|
+                      if v.is_a? Snapsync::RemotePathname or v.is_a? Pathname
+                          [k,v.to_s]
+                      else
+                          [k,v]
+                      end
+                  end
               end
             }
             File.open(path, 'w') do |io|
