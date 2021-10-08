@@ -98,6 +98,11 @@ end
 module Snapsync
     install_root_logging(forward: true)
 
+    class << self
+        attr_accessor :SSH_DEBUG
+    end
+    Snapsync.SSH_DEBUG = false
+
     # @param [String] dir
     def self.path(dir)
         if dir.instance_of? RemotePathname or dir.include? ':'
