@@ -108,41 +108,34 @@ module Snapsync
         # @return [void]
         def each_available_autosync_target
             return enum_for(__method__) if !block_given?
-            partitions.poll
 
-            partitions.known_partitions.each do |uuid, fs|
-                autosync_targets = targets[uuid]
-                next if autosync_targets.empty?
-
-                mp = fs['MountPoints'].first
-                if mp
-                    mp = Snapsync::path(mp[0..-2].pack("U*"))
-                end
-
+            each_autosync_target do |target|
+                # @type [RemotePathname]
                 begin
                     mounted = false
-
-                    if !mp
-                        if !autosync_targets.any?(&:automount)
+                    mountpoint = target.mountpath
+                    if not mountpoint.mountpoint?
+                        if not target.automount
                             Snapsync.info "partition #{uuid} is present, but not mounted and automount is false. Ignoring"
                             next
                         end
 
                         Snapsync.info "partition #{uuid} is present, but not mounted, automounting"
                         begin
-                            mp = fs.Mount([]).first
+                            if mountpoint.is_a? RemotePathname
+                                # TODO: automounting of remote paths
+                                raise 'TODO'
+                            else
+                                fs.Mount([]).first
+                            end
+                            mounted = true
                         rescue Exception => e
                             Snapsync.warn "failed to mount, ignoring this target"
                             next
                         end
-                        mp = Pathname.new(mp)
-                        mounted = true
                     end
 
-                    autosync_targets.each do |target|
-                        yield(mp + target.path, target)
-                    end
-
+                    yield(target.mountpath + target.relative, target)
                 ensure
                     if mounted
                         fs.Unmount([])
