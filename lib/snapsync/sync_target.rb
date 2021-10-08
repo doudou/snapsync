@@ -38,6 +38,7 @@ module Snapsync
             "local:#{dir}"
         end
 
+        # @param [Pathname] dir
         def initialize(dir, create_if_needed: true)
             if !dir.directory?
                 raise ArgumentError, "#{dir} does not exist"
@@ -167,6 +168,7 @@ module Snapsync
                 self.class.parse_policy(type, options)
         end
 
+        # @param [Snapshot] s
         def delete(s, dry_run: false)
             Snapsync.info "Removing snapshot #{s.num} #{s.date.to_time} at #{s.subvolume_dir}"
             return if dry_run

@@ -10,6 +10,7 @@ module Snapsync
         attr_reader :subvolume
 
         # The filesystem type
+        # @return [String]
         attr_reader :fstype
 
         def initialize(name)
