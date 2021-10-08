@@ -38,8 +38,8 @@ module Snapsync
                 if dir
                     dir = Pathname.new(dir)
                     begin
-                        return yield(nil, LocalTarget.new(dir, create_if_needed: false))
-                    rescue LocalTarget::InvalidTargetPath
+                        return yield(nil, SyncTarget.new(dir, create_if_needed: false))
+                    rescue SyncTarget::InvalidTargetPath
                     end
 
                     SyncAll.new(dir).each_target do |config, target|
@@ -67,7 +67,7 @@ module Snapsync
             handle_class_options
 
             config = config_from_name(config_name)
-            target = LocalTarget.new(Pathname.new(dir))
+            target = SyncTarget.new(Pathname.new(dir))
             Sync.new(config, target, autoclean: options[:autoclean]).run
         end
 
@@ -88,7 +88,7 @@ module Snapsync
         def cleanup(dir)
             handle_class_options
 
-            target = LocalTarget.new(Pathname.new(dir))
+            target = SyncTarget.new(Pathname.new(dir))
             if target.cleanup
                 target.cleanup.cleanup(target, dry_run: options[:dry_run])
             else
@@ -107,7 +107,7 @@ module Snapsync
                         [args.shift, args]
                     end
 
-                LocalTarget.parse_policy(*policy)
+                SyncTarget.parse_policy(*policy)
                 return *policy
             end
         end
@@ -182,11 +182,11 @@ policy for more information
 
             dirs.each do |path|
                 begin
-                    LocalTarget.new(path, create_if_needed: false)
+                    SyncTarget.new(path, create_if_needed: false)
                     Snapsync.info "#{path} was already initialized"
-                rescue ArgumentError, LocalTarget::NoUUIDError
+                rescue ArgumentError, SyncTarget::NoUUIDError
                     path.mkpath
-                    target = LocalTarget.new(path)
+                    target = SyncTarget.new(path)
                     target.change_policy(*policy)
                     target.write_config
                     Snapsync.info "initialized #{path} as a snapsync target"
@@ -277,7 +277,7 @@ While it can easily be done manually, this command makes sure that the snapshots
         def destroy(dir)
             handle_class_options
             target_dir = Pathname.new(dir)
-            target = LocalTarget.new(target_dir, create_if_needed: false)
+            target = SyncTarget.new(target_dir, create_if_needed: false)
             snapshots = target.each_snapshot.to_a
             snapshots.sort_by(&:num).each do |s|
                 target.delete(s)

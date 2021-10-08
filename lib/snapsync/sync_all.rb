@@ -40,7 +40,7 @@ module Snapsync
                 if !dir.exist?
                     Snapsync.warn "no directory for configuration #{config.name} in #{target_dir}"
                 else
-                    yield(config, LocalTarget.new(dir))
+                    yield(config, SyncTarget.new(dir))
                 end
             end
         end

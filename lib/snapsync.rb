@@ -16,7 +16,7 @@ require "snapsync/exceptions"
 require 'snapsync/btrfs'
 require "snapsync/snapper_config"
 require "snapsync/snapshot"
-require "snapsync/local_target"
+require "snapsync/sync_target"
 require "snapsync/local_sync"
 require 'snapsync/cleanup'
 

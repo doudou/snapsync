@@ -7,7 +7,7 @@ module Snapsync
         attr_reader :config
         # The target directory into which to synchronize
         #
-        # @return [LocalTarget]
+        # @return [SyncTarget]
         attr_reader :target
         
         def initialize(config, target)

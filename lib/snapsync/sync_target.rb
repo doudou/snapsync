@@ -1,5 +1,5 @@
 module Snapsync
-    class LocalTarget
+    class SyncTarget
         # The target's UUID
         #
         # @return [String]
