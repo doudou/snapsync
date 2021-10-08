@@ -9,9 +9,18 @@ module Snapsync
         #
         # @return [SyncTarget]
         attr_reader :target
+
+        # @return [Btrfs]
+        attr_reader :btrfs_src
+
+        # @return [Btrfs]
+        attr_reader :btrfs_dest
         
         def initialize(config, target)
             @config, @target = config, target
+
+            @btrfs_src = Btrfs.new(config.subvolume)
+            @btrfs_dest = Btrfs.new(@target.dir.parent_mountpoint)
         end
 
         def create_synchronization_point
@@ -84,7 +93,7 @@ module Snapsync
 
             if copy_snapshot(target_snapshot_dir, src, parent: parent)
                 partial_marker_path.unlink
-                Btrfs.run("filesystem", "sync", target_snapshot_dir.to_s)
+                btrfs_dest.run("filesystem", "sync", target_snapshot_dir.to_s)
                 Snapsync.info "Successfully synchronized #{src.snapshot_dir}"
                 true
             end
@@ -112,15 +121,15 @@ module Snapsync
             start = Time.now
             bytes_transferred = nil
             bytes_transferred =
-                Btrfs.popen('send', *parent_opt, src.subvolume_dir.to_s) do |send_io|
-                    Btrfs.popen('receive', target_snapshot_dir.to_s, mode: 'w', out: '/dev/null') do |receive_io|
+                btrfs_src.popen('send', *parent_opt, src.subvolume_dir.to_s) do |send_io|
+                    btrfs_dest.popen('receive', target_snapshot_dir.path_part, mode: 'w', out: '/dev/null') do |receive_io|
                         receive_io.sync = true
                         copy_stream(send_io, receive_io, estimated_size: estimated_size)
                     end
                 end
 
             Snapsync.info "Flushing data to disk"
-            Btrfs.run("filesystem", "sync", target_snapshot_dir.to_s)
+            btrfs_dest.run("filesystem", "sync", target_snapshot_dir.to_s)
             duration = Time.now - start
             rate = bytes_transferred / duration
             Snapsync.info "Transferred #{human_readable_size(bytes_transferred)} in #{human_readable_time(duration)} (#{human_readable_size(rate)}/s)"
@@ -128,10 +137,10 @@ module Snapsync
             true
 
         rescue Exception => e
-            Snapsync.warn "Failed to synchronize #{src.snapshot_dir}, deleting target directory"
             subvolume_dir = target_snapshot_dir + "snapshot"
+            Snapsync.warn "Failed to synchronize #{src.snapshot_dir}, deleting target directory #{subvolume_dir}"
             if subvolume_dir.directory?
-                Btrfs.run("subvolume", "delete", subvolume_dir.to_s)
+                btrfs_dest.run("subvolume", "delete", subvolume_dir.path_part.to_s)
             end
             if target_snapshot_dir.directory?
                 target_snapshot_dir.rmtree

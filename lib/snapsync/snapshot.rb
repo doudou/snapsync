@@ -6,6 +6,9 @@ module Snapsync
         # @return [Pathname]
         attr_reader :snapshot_dir
 
+        # @return [Btrfs]
+        attr_reader :btrfs
+
         # The path to the snapshot's subvolume
         #
         # @return [Pathname]
@@ -59,8 +62,11 @@ module Snapsync
             user_data['snapsync'] == target.uuid
         end
 
+
+        # @param [AgnosticPath] snapshot_dir
         def initialize(snapshot_dir)
             @snapshot_dir = snapshot_dir
+            @btrfs = Btrfs.new(snapshot_dir.parent_mountpoint)
 
             if !snapshot_dir.directory?
                 raise InvalidSnapshot, "#{snapshot_dir} does not exist"
@@ -83,7 +89,7 @@ module Snapsync
         # @return [Integer] the size in bytes of the difference between the
         #   given snapshot and the current subvolume's state
         def size_diff_from(snapshot)
-            snapshot_gen = Btrfs.generation_of(snapshot.subvolume_dir)
+            snapshot_gen = btrfs.generation_of(snapshot.subvolume_dir)
             size_diff_from_gen(snapshot_gen)
         end
 
@@ -103,7 +109,7 @@ module Snapsync
         # @return [Integer] size in bytes
         # @see size_diff_from size
         def size_diff_from_gen(gen)
-            Btrfs.find_new(subvolume_dir, gen).inject(0) do |size, line|
+            btrfs.find_new(subvolume_dir, gen).inject(0) do |size, line|
                 if line =~ /len (\d+)/
                     size + Integer($1)
                 else size

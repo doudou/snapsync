@@ -1,5 +1,5 @@
 module Snapsync
-    module Btrfs
+    class Btrfs
         class Error < RuntimeError
             attr_reader :error_lines
             def initialize(error_lines = Array.new)
@@ -20,25 +20,47 @@ module Snapsync
         class UnexpectedBtrfsOutput < Error
         end
 
-        def self.btrfs_prog
+        attr_reader :mountpoint
+        
+        # @param [Pathname | AgnosticPath] mountpoint
+        def initialize(mountpoint)
+            @mountpoint = mountpoint
+
+            raise "Trying to create Btrfs wrapper on non-mountpoint" unless mountpoint.mountpoint?
+        end
+
+        def btrfs_prog
             ENV['BTRFS_PROG'] || 'btrfs'
         end
 
         # @api private
         #
         # A IO.popen-like API to btrfs subcommands
-        def self.popen(*args, mode: 'r', raise_on_error: true, **options)
+        def popen(*args, mode: 'r', raise_on_error: true, **options)
+            # @type [IO,IO]
             err_r, err_w = IO.pipe
-
             block_error, block_result = nil
-            IO.popen([btrfs_prog, *args, err: err_w, **options], mode) do |io|
+
+            Snapsync.debug "Btrfs(\"#{mountpoint}\").popen: #{args}"
+
+            if @mountpoint.is_a? RemotePathname
                 err_w.close
 
+                proc = SSHPopen.new(@mountpoint, [btrfs_prog, *args])
+                block_result = yield(proc)
+            else
                 begin
-                    block_result = yield(io)
-                rescue Error
-                    raise
-                rescue Exception => block_error
+                    IO.popen([btrfs_prog, *args, err: err_w, **options], mode) do |io|
+                        err_w.close
+
+                        begin
+                            block_result = yield(io)
+                        rescue Error
+                            raise
+                        rescue Exception => block_error
+                        end
+                    end
+                ensure err_r.close
                 end
             end
 
@@ -51,7 +73,6 @@ module Snapsync
                     raise Error.new, "btrfs failed"
                 end
             end
-
         rescue Error => e
             prefix = args.join(" ")
             begin
@@ -62,11 +83,9 @@ module Snapsync
                 lines = []
             end
             raise Error.new(e.error_lines + lines), e.message, e.backtrace
-
-        ensure err_r.close
         end
 
-        def self.run(*args, **options)
+        def run(*args, **options)
             popen(*args, **options) do |io|
                 io.read.encode('utf-8', undef: :replace, invalid: :replace)
             end
@@ -76,8 +95,8 @@ module Snapsync
         #
         # @param [Pathname] path the subvolume path
         # @return [Integer] the subvolume's generation
-        def self.generation_of(path)
-            info = Btrfs.run('subvolume', 'show', path.to_s)
+        def generation_of(path)
+            info = run('subvolume', 'show', path.to_s)
             if info =~ /Generation[^:]*:\s+(\d+)/
                 Integer($1)
             else
@@ -98,7 +117,7 @@ module Snapsync
         #
         # @overload find_new(subvolume_dir, last_gen)
         #   @return [#each] an enumeration of the lines of the find-new output
-        def self.find_new(subvolume_dir, last_gen, &block)
+        def find_new(subvolume_dir, last_gen, &block)
             run('subvolume', 'find-new', subvolume_dir.to_s, last_gen.to_s).
                 each_line(&block)
         end
