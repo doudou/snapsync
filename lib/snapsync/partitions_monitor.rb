@@ -80,15 +80,12 @@ module Snapsync
             end
 
             # Find any partition that is a parent of the folder we are looking at
-            loop do
-                parts.each do |name, uuid, mount_points|
-                    if mount_points.include?(dir.path_part)
-                        return uuid, dir, rel
-                    end
+            parts.each do |name, uuid, mount_points|
+                if mount_points.include?(dir.path_part)
+                    return uuid, dir, rel
                 end
-                raise ArgumentError, "cannot guess the partition UUID of the mountpoint #{dir} for #{dir + rel}" if dir.path_part == '/'
-                dir = dir.parent
             end
+            raise ArgumentError, "cannot guess the partition UUID of the mountpoint #{dir} for #{dir + rel}"
         end
 
         def dirty!
