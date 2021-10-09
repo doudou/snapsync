@@ -34,7 +34,7 @@ module Snapsync
                     end
                     ssh.loop {
                         begin
-                            channel.send_data(write_buffer_out.read_nonblock(16 * 1024))
+                            channel.send_data(write_buffer_out.read_nonblock(2 << 20))
                         rescue IO::EAGAINWaitReadable
                         end
 
