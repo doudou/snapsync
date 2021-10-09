@@ -36,7 +36,7 @@ module Snapsync
                 conf = config_migrate_v1_v2(conf)
                 migrated = true
             elsif conf['version'] != 2
-                raise Error.new, 'Unknown snapsync config version: %d ' % [conf.version]
+                raise 'Unknown snapsync config version: %d ' % [conf.version]
             end
             parse_config(conf)
             if migrated
