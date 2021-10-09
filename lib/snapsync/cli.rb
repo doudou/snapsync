@@ -120,6 +120,8 @@ module Snapsync
 NAME must be provided if DIR is to be added to the auto-sync targets (which
 is the default).
 
+DIR can be a remote filesystem path in scp-like format ( [user[:password]@]host:/path/to/drive/snapsync )
+
 By default, the default policy is used. To change this, provide additional
 arguments as would be expected by the policy subcommand. Run snapsync help
 policy for more information

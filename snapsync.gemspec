@@ -14,7 +14,7 @@ Gem::Specification.new do |spec|
   spec.license       = "MIT"
   spec.description   =<<-EOD
 Snapsync is a tool that automates transferring snapper snapshots to
-external media (USB drives ...) and managing these snapshots (e.g.
+external media (USB drives ...), remote filesystems [experimental] and managing these snapshots (e.g.
 timeline cleanup)
 EOD
 
