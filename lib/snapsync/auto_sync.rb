@@ -14,7 +14,7 @@ module Snapsync
 
         DEFAULT_CONFIG_PATH = Pathname.new('/etc/snapsync.conf')
 
-        def initialize(config_dir = SnapperConfig.default_config_dir, snapsync_config_file = DEFAULT_CONFIG_PATH)
+        def initialize(config_dir = SnapperConfig.default_config_dir, snapsync_config_file: DEFAULT_CONFIG_PATH)
             @config_dir = config_dir
             @targets = Hash.new
             @partitions = PartitionsMonitor.new

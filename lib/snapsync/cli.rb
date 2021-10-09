@@ -212,7 +212,7 @@ policy for more information
             uuid, mountpoint, relative = partition_of(Snapsync::path(dir))
             conf_path = Pathname.new(options[:config_file])
 
-            autosync = AutoSync.new config_from_name: conf_path
+            autosync = AutoSync.new snapsync_config_file: conf_path
             exists = autosync.each_autosync_target.find do |t|
                 t.partition_uuid == uuid && t.mountpoint.cleanpath == mountpoint.cleanpath && t.relative.cleanpath == relative.cleanpath
             end
@@ -295,7 +295,7 @@ While it can easily be done manually, this command makes sure that the snapshots
             default: '/etc/snapsync.conf'
         def auto_sync
             handle_class_options
-            auto = AutoSync.new(SnapperConfig.default_config_dir, Pathname.new(options[:config_file]))
+            auto = AutoSync.new(SnapperConfig.default_config_dir, snapsync_config_file: Pathname.new(options[:config_file]))
             if options[:one_shot]
                 auto.sync
             else
