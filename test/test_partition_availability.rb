@@ -16,7 +16,7 @@ module Snapsync
                 flexmock(mount_point).should_receive(:mountpoint?).and_return(true)
             end
 
-            it "returns the UUID and relative path of the partition matching the mountpoint" do
+            it "returns the UUID, mountpoint, relative path of the partition matching the mountpoint" do
                 dev = Hash[
                     'org.freedesktop.UDisks2.Block' => Hash[
                         'IdUUID' => 'TestUUID'
@@ -27,10 +27,14 @@ module Snapsync
                 ]
                 flexmock(subject).should_receive(:each_partition_with_filesystem).
                     and_yield("", dev)
-                assert_equal ['TestUUID', Pathname.new("b")], subject.partition_of(path)
+                assert_equal ['TestUUID', Pathname.new('/a'), Pathname.new("b")], subject.partition_of(path)
             end
 
             it "raises ArgumentError if we can't find the mount point in UDisks" do
+                flexmock(subject).should_receive(:each_partition_with_filesystem).and_yield(['name', Hash[
+                    'org.freedesktop.UDisks2.Block' => Hash['IdUUID' => 'test'],
+                    'org.freedesktop.UDisks2.Filesystem' => Hash['MountPoints' => ["/test".unpack("U*") + [0]]]
+                    ]])
                 error = assert_raises(ArgumentError) do
                     subject.partition_of(path)
                 end
