@@ -214,7 +214,7 @@ policy for more information
 
             autosync = AutoSync.new config_from_name: conf_path
             exists = autosync.each_autosync_target.find do |t|
-                t.partition_uuid == uuid && t.mountpath.cleanpath == mountpoint.cleanpath && t.relative.cleanpath == relative.cleanpath
+                t.partition_uuid == uuid && t.mountpoint.cleanpath == mountpoint.cleanpath && t.relative.cleanpath == relative.cleanpath
             end
             if exists
                 if !exists.name

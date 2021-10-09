@@ -5,7 +5,7 @@ module Snapsync
     # partition availability, and will run sync-all on each (declared) targets
     # when they are available, optionally auto-mounting them
     class AutoSync
-        AutoSyncTarget = Struct.new :partition_uuid, :mountpath, :relative, :automount, :name
+        AutoSyncTarget = Struct.new :partition_uuid, :mountpoint, :relative, :automount, :name
 
         attr_reader :config_dir
         # @return [Hash<String,Array<AutoSyncTarget>>]
@@ -63,7 +63,7 @@ module Snapsync
             conf['targets'].each do |hash|
                 target = AutoSyncTarget.new
                 hash.each { |k, v| target[k] = v }
-                target.mountpath = Snapsync::path(target.mountpath)
+                target.mountpoint = Snapsync::path(target.mountpoint)
                 target.relative = Snapsync::path(target.relative)
                 add(target)
             end
@@ -75,9 +75,9 @@ module Snapsync
               'targets' => each_autosync_target.map do |target|
                   target.to_h do |k,v|
                       if v.is_a? Snapsync::RemotePathname or v.is_a? Pathname
-                          [k,v.to_s]
+                          [k.to_s,v.to_s]
                       else
-                          [k,v]
+                          [k.to_s,v]
                       end
                   end
               end
@@ -113,7 +113,7 @@ module Snapsync
                 # @type [RemotePathname]
                 begin
                     mounted = false
-                    mountpoint = target.mountpath
+                    mountpoint = target.mountpoint
                     if not mountpoint.mountpoint?
                         if not target.automount
                             Snapsync.info "partition #{uuid} is present, but not mounted and automount is false. Ignoring"
@@ -135,7 +135,7 @@ module Snapsync
                         end
                     end
 
-                    yield(target.mountpath + target.relative, target)
+                    yield(target.mountpoint + target.relative, target)
                 ensure
                     if mounted
                         fs.Unmount([])
