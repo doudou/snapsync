@@ -36,13 +36,13 @@ module Snapsync
         end
 
         describe "#size_diff_from_gen" do
-            attr_reader :snapshot
+            attr_reader :snapshot, :btrfs
             before do
                 @snapshot = Snapshot.new(stub_snapshots_dir + "valid")
             end
 
             it "accumulates the length of each difference record" do
-                flexmock(Btrfs).should_receive(:find_new).
+                flexmock(snapshot.btrfs).should_receive(:find_new).
                     with(stub_snapshots_dir + "valid" + "snapshot", 42).
                     once.and_return [
                         "inode 8992834 file offset 0 len 10 disk start 54989 offset 0 gen 32948 flags NONE fake/entry/",
@@ -52,7 +52,7 @@ module Snapsync
             end
 
             it "ignores non-matching lines" do
-                flexmock(Btrfs).should_receive(:find_new).
+                flexmock(snapshot.btrfs).should_receive(:find_new).
                     with(stub_snapshots_dir + "valid" + "snapshot", 42).
                     once.and_return [
                         "something completely else",
