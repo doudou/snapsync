@@ -4,7 +4,9 @@ module Snapsync
 
         attr_reader :dirty
 
+        # @return [Set<String>]
         attr_reader :monitored_partitions
+        # @return [Hash<String, Dev>]
         attr_reader :known_partitions
 
         # @param [RemotePathname] machine Remote machine to connect to

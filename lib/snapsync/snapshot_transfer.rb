@@ -70,6 +70,7 @@ module Snapsync
             counter
         end
 
+        # @param [AgnosticPath] target_snapshot_dir
         def synchronize_snapshot(target_snapshot_dir, src, parent: nil)
             partial_marker_path = Snapshot.partial_marker_path(target_snapshot_dir)
 
@@ -99,6 +100,7 @@ module Snapsync
             end
         end
 
+        # @param [AgnosticPath] target_snapshot_dir
         def copy_snapshot(target_snapshot_dir, src, parent: nil)
             # This variable is used in the 'ensure' block. Make sure it is
             # initialized properly

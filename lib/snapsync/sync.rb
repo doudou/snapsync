@@ -3,6 +3,7 @@ module Snapsync
     class Sync
         attr_reader :config
 
+        # @return [SyncTarget]
         attr_reader :target
 
         def initialize(config, target, autoclean: nil)
