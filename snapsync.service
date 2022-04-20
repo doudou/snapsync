@@ -4,7 +4,7 @@ Wants=udisks2.service
 
 [Service]
 Type=simple
-ExecStart=/opt/snapsync/bin/snapsync auto-sync
+ExecStart=/usr/bin/snapsync auto-sync --one-shot
 
 [Install]
 WantedBy=default.target

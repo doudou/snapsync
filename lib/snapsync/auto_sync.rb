@@ -5,7 +5,7 @@ module Snapsync
     # partition availability, and will run sync-all on each (declared) targets
     # when they are available, optionally auto-mounting them
     class AutoSync
-        AutoSyncTarget = Struct.new :partition_uuid, :mountpoint, :relative, :automount, :name
+        AutoSyncTarget = Struct.new :partition_uuid, :mountpoint, :relative, :automount, :name, :type
 
         attr_reader :config_dir
         # @return [Hash<String,Array<AutoSyncTarget>>]
@@ -18,6 +18,7 @@ module Snapsync
             @config_dir = config_dir
             @targets = Hash.new
             @partitions = PartitionsMonitor.new
+            partitions.poll
 
             if snapsync_config_file.exist?
                 load_config snapsync_config_file
@@ -46,11 +47,19 @@ module Snapsync
 
         private def config_migrate_v1_v2(conf)
             Snapsync.info "Migrating config from version 1 to version 2"
-            targets = conf.map do |hash|
+            targets = conf.map do |target|
                 # Fallback to default if target type not defined (maybe older config)
-                if target.type.nil?
-                    target.type = 'local'
+                if target['type'].nil?
+                    target['type'] = 'local'
                 end
+                target['relative'] = target['path']
+                target.delete('path')
+                begin
+                    target['mountpoint'] = partitions.mountpoint_of_uuid(target['partition_uuid'])
+                rescue
+                    raise "Could not migrate config."
+                end
+
                 target
             end
             {

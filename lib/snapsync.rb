@@ -106,6 +106,7 @@ module Snapsync
 
     # @param [String] dir
     def self.path(dir)
+        raise "Empty dir" if dir.nil?
         if dir.instance_of? RemotePathname or dir.include? ':'
             begin
                 RemotePathname.new(dir)
