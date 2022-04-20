@@ -210,7 +210,7 @@ module Snapsync
         next if entry.name == '.' or entry.name == '..'
 
         o = self.dup
-        o.uri.path = o.uri.path + entry.name
+        o.uri.path = (Pathname.new(o.uri.path) + entry.name).to_s
         yield o
       end
     end
