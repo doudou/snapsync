@@ -67,6 +67,10 @@ module Snapsync
     def rmtree
       raise NotImplementedError
     end
+    def unlink
+      raise NotImplementedError
+    end
+    # @return [AgnosticPath]
     def +(path)
       raise NotImplementedError
     end
@@ -232,6 +236,10 @@ module Snapsync
 
     def rmtree
       raise 'Failed' unless ssh.exec!(Shellwords.join ['rm','-r', uri.path]).exitstatus == 0
+    end
+
+    def unlink
+      raise 'Failed' unless ssh.exec!(Shellwords.join ['rm', uri.path]).exitstatus == 0
     end
 
     def +(path)
