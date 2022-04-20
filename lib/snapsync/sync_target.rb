@@ -9,9 +9,11 @@ module Snapsync
         attr_reader :dir
 
         # The target sync policy
+        # @return [DefaultSyncPolicy]
         attr_reader :sync_policy
 
         # The cleanup object
+        # @return [Cleanup]
         attr_reader :cleanup
 
         # Whether this target is enabled or not
@@ -170,11 +172,13 @@ module Snapsync
 
         # @param [Snapshot] s
         def delete(s, dry_run: false)
+            btrfs = Btrfs.new(s.subvolume_dir.parent_mountpoint)
+
             Snapsync.info "Removing snapshot #{s.num} #{s.date.to_time} at #{s.subvolume_dir}"
             return if dry_run
 
             begin
-                Btrfs.run("subvolume", "delete", '--commit-each', s.subvolume_dir.to_s)
+                btrfs.run("subvolume", "delete", '--commit-each', s.subvolume_dir.to_s)
             rescue Btrfs::Error
                 Snapsync.warn "failed to remove snapshot at #{s.subvolume_dir}, keeping the rest of the snapshot"
                 return
@@ -182,7 +186,7 @@ module Snapsync
 
             Snapsync.info "Flushing data to disk"
             begin
-                Btrfs.run("subvolume", "sync", self.dir.to_s)
+                btrfs.run("subvolume", "sync", self.dir.to_s)
             rescue Btrfs::Error
             end
 
