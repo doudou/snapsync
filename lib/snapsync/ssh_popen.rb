@@ -3,14 +3,19 @@ module Snapsync
         # @return [IO]
         attr_reader :read_buffer
 
-        # @return [Queue]
+        # @return [IO]
         attr_reader :write_buffer
 
         # @param machine [RemotePathname]
         # @param [Array] command
-        def initialize(machine, command)
+        # @param options [Hash]
+        def initialize(machine, command, options)
             @read_buffer, read_buffer_in = IO.pipe
             write_buffer_out, @write_buffer = IO.pipe
+
+            if options[:out]
+                read_buffer_in = File.open(options[:out], "w")
+            end
 
             ready = Concurrent::AtomicBoolean.new(false)
             @ssh_thr = Thread.new do
@@ -22,28 +27,33 @@ module Snapsync
                         ssh.logger = log
                         ssh.logger.sev_threshold = Logger::Severity::DEBUG
                     end
-                    channel = ssh.exec(Shellwords.join command) do |ch, stream, data|
-                        if stream == :stdout
-                            read_buffer_in.write(data)
-                        else
-                            data = data.chomp
-                            if data.length > 0
-                                Snapsync.error data.chomp
-                            end
+                    # @type [Net::SSH::Connection::Channel]
+                    channel = ssh.exec(Shellwords.join command)
+                    channel.on_data do
+                        read_buffer_in.write(data)
+                    end
+                    channel.on_extended_data do
+                        data = data.chomp
+                        if data.length > 0
+                            Snapsync.error data.chomp
                         end
                     end
-                    ssh.loop {
+
+                    channel.on_process do
                         begin
                             channel.send_data(write_buffer_out.read_nonblock(2 << 20))
                         rescue IO::EAGAINWaitReadable
                         end
+                    end
 
+                    ssh.loop(0.001) {
                         if write_buffer_out.closed?
                             channel.close
                         end
 
                         channel.active?
                     }
+                    Snapsync.debug "SSHPopen channel closed"
                     read_buffer_in.close
                     write_buffer_out.close
                 end

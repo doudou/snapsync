@@ -46,7 +46,7 @@ module Snapsync
             if @mountpoint.is_a? RemotePathname
                 err_w.close
 
-                proc = SSHPopen.new(@mountpoint, [btrfs_prog, *args])
+                proc = SSHPopen.new(@mountpoint, [btrfs_prog, *args], options)
                 block_result = yield(proc)
             else
                 begin
