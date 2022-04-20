@@ -32,15 +32,17 @@ module Snapsync
         end
 
         def remove_partially_synchronized_snapshots
+            btrfs_target = Btrfs.new(@target.dir.parent_mountpoint)
+
             target.each_snapshot_raw do |path, snapshot, error|
                 next if !error && !snapshot.partial?
 
                 Snapsync.info "Removing partial snapshot at #{path}"
                 begin
                     if (path + "snapshot").exist?
-                        Btrfs.run("subvolume", "delete", (path + "snapshot").to_s)
+                        btrfs_target.run("subvolume", "delete", (path + "snapshot").to_s)
                     elsif (path + "snapshot.partial").exist?
-                        Btrfs.run("subvolume", "delete", (path + "snapshot.partial").to_s)
+                        btrfs_target.run("subvolume", "delete", (path + "snapshot.partial").to_s)
                     end
                 rescue Btrfs::Error => e
                     Snapsync.warn "failed to remove snapshot at #{path}, keeping the rest of the snapshot"
@@ -51,8 +53,9 @@ module Snapsync
                 path.rmtree
                 Snapsync.info "Flushing data to disk"
                 begin
-                    Btrfs.run("subvolume", "sync", path.to_s)
+                    btrfs_target.run("subvolume", "sync", path.to_s)
                 rescue Btrfs::Error
+                    # Ignored
                 end
             end
         end
