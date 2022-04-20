@@ -29,7 +29,7 @@ module Snapsync
             # Resolves a path (or nil) into a list of snapsync targets and
             # yields them
             #
-            # @param [String,nil] dir the path the user gave, or nil if all
+            # @param [AgnosticPath,nil] dir the path the user gave, or nil if all
             #   available auto-sync paths should be processed. If the directory is
             #   a target, it is yield as-is. It can also be the root of a sync-all
             #   target (with proper snapsync target as subdirectories whose name
@@ -39,7 +39,7 @@ module Snapsync
             def each_target(dir = nil)
                 return enum_for(__method__) if !block_given?
                 if dir
-                    dir = Pathname.new(dir)
+                    dir = Snapsync::path(dir)
                     begin
                         return yield(nil, SyncTarget.new(dir, create_if_needed: false))
                     rescue SyncTarget::InvalidTargetPath
@@ -62,15 +62,16 @@ module Snapsync
             end
         end
 
-        desc 'sync <CONFIG_DIR>', 'synchronizes the snapper configuration CONFIG with the snapsync target DIR'
+        desc 'sync <CONFIG> <DIR>', 'synchronizes the snapper configuration CONFIG with the snapsync target DIR'
         option :autoclean, type: :boolean, default: nil,
             desc: 'whether the target should be cleaned of obsolete snapshots',
             long_desc: "The default is to use the value specified in the target's configuration file. This command line option allows to override the default"
         def sync(config_name, dir)
             handle_class_options
+            dir = Snapsync::path(dir)
 
             config = config_from_name(config_name)
-            target = SyncTarget.new(Pathname.new(dir))
+            target = SyncTarget.new(dir)
             Sync.new(config, target, autoclean: options[:autoclean]).run
         end
 
@@ -81,7 +82,7 @@ module Snapsync
         def sync_all(dir)
             handle_class_options
 
-            dir = Pathname.new(dir)
+            dir = Snapsync::path(dir)
             op = SyncAll.new(dir, config_dir: SnapperConfig.default_config_dir, autoclean: options[:autoclean])
             op.run
         end
@@ -90,8 +91,8 @@ module Snapsync
         option :dry_run, type: :boolean, default: false
         def cleanup(dir)
             handle_class_options
+            target = SyncTarget.new(Snapsync::path(dir))
 
-            target = SyncTarget.new(Pathname.new(dir))
             if target.cleanup
                 target.cleanup.cleanup(target, dry_run: options[:dry_run])
             else
@@ -267,6 +268,8 @@ OPTIONS := { year {int} | month {int} | week {int} | day {int} | hour {int} }
         EOD
         def policy(dir, type, *options)
             handle_class_options
+            dir = Snapsync::path(dir)
+
             # Parse the policy early to avoid breaking later
             policy = normalize_policy([type, *options])
             each_target(dir) do |_, target|
@@ -281,7 +284,8 @@ While it can easily be done manually, this command makes sure that the snapshots
         EOD
         def destroy(dir)
             handle_class_options
-            target_dir = Pathname.new(dir)
+            target_dir = Snapsync::path(dir)
+
             target = SyncTarget.new(target_dir, create_if_needed: false)
             snapshots = target.each_snapshot.to_a
             snapshots.sort_by(&:num).each do |s|
