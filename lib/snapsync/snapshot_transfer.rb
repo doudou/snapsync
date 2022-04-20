@@ -154,6 +154,9 @@ module Snapsync
         def sync
             STDOUT.sync = true
 
+            # Do a snapper cleanup before syncing
+            config.cleanup
+
             # First, create a snapshot and protect it against cleanup, to use as
             # synchronization point
             #

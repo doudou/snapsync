@@ -76,6 +76,11 @@ module Snapsync
             system("snapper", "-c", name, "delete", snapshot.num.to_s)
         end
 
+        def cleanup
+            Snapsync.debug "SnapperConfig.cleanup"
+            system('snapper', '-c', name, 'cleanup', 'all')
+        end
+
         # Create a SnapperConfig object from the data in a configuration file
         #
         # @param [#readlines] path the file
