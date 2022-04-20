@@ -178,7 +178,7 @@ module Snapsync
             return if dry_run
 
             begin
-                btrfs.run("subvolume", "delete", '--commit-each', s.subvolume_dir.to_s)
+                btrfs.run("subvolume", "delete", s.subvolume_dir.path_part)
             rescue Btrfs::Error
                 Snapsync.warn "failed to remove snapshot at #{s.subvolume_dir}, keeping the rest of the snapshot"
                 return

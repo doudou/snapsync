@@ -94,7 +94,7 @@ module Snapsync
 
             if copy_snapshot(target_snapshot_dir, src, parent: parent)
                 partial_marker_path.unlink
-                btrfs_dest.run("filesystem", "sync", target_snapshot_dir.to_s)
+                btrfs_dest.run("filesystem", "sync", target_snapshot_dir.path_part)
                 Snapsync.info "Successfully synchronized #{src.snapshot_dir}"
                 true
             end
@@ -131,7 +131,7 @@ module Snapsync
                 end
 
             Snapsync.info "Flushing data to disk"
-            btrfs_dest.run("filesystem", "sync", target_snapshot_dir.to_s)
+            btrfs_dest.run("filesystem", "sync", target_snapshot_dir.path_part)
             duration = Time.now - start
             rate = bytes_transferred / duration
             Snapsync.info "Transferred #{human_readable_size(bytes_transferred)} in #{human_readable_time(duration)} (#{human_readable_size(rate)}/s)"
@@ -142,7 +142,7 @@ module Snapsync
             subvolume_dir = target_snapshot_dir + "snapshot"
             Snapsync.warn "Failed to synchronize #{src.snapshot_dir}, deleting target directory #{subvolume_dir}"
             if subvolume_dir.directory?
-                btrfs_dest.run("subvolume", "delete", subvolume_dir.path_part.to_s)
+                btrfs_dest.run("subvolume", "delete", subvolume_dir.path_part)
             end
             if target_snapshot_dir.directory?
                 target_snapshot_dir.rmtree
