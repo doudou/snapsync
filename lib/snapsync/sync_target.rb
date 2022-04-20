@@ -58,8 +58,8 @@ module Snapsync
                 @cleanup = nil
                 @enabled = true
                 @autoclean = true
+                write_config
             end
-            write_config
         end
 
         def each_snapshot_raw(&block)
