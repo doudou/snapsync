@@ -28,18 +28,11 @@ end
 
 module Snapsync
     # This module is the common setup for all tests
-    #
-    # It should be included in the toplevel describe blocks
-    #
-    # @example
-    #   require 'snapsync/test'
-    #   describe Snapsync do
-    #     include Snapsync::SelfTest
-    #   end
-    #
     module SelfTest
         def setup
             @tempdirs = Array.new
+            Snapsync._mountpointCache = {}
+            Snapsync::Btrfs._mountpointCache = {}
             super
             # Setup code for all the tests
         end

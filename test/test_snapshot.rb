@@ -2,6 +2,12 @@ require 'snapsync/test'
 
 module Snapsync
     describe Snapshot do
+        before do
+            flexmock(Pathname).new_instances.should_receive(:findmnt).and_return(Pathname.new '/')
+            flexmock(Btrfs).new_instances.should_receive(:read_subvolume_table)
+            Btrfs.get(Pathname.new '/does_not_exist')
+        end
+
         def stub_snapshots_dir
             Pathname.new(__FILE__).dirname + "snapshots"
         end
