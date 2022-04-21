@@ -1,5 +1,5 @@
 module Snapsync
-    class LocalTarget
+    class SyncTarget
         # The target's UUID
         #
         # @return [String]
@@ -9,9 +9,11 @@ module Snapsync
         attr_reader :dir
 
         # The target sync policy
+        # @return [DefaultSyncPolicy]
         attr_reader :sync_policy
 
         # The cleanup object
+        # @return [Cleanup]
         attr_reader :cleanup
 
         # Whether this target is enabled or not
@@ -38,6 +40,7 @@ module Snapsync
             "local:#{dir}"
         end
 
+        # @param [AgnosticPath] dir
         def initialize(dir, create_if_needed: true)
             if !dir.directory?
                 raise ArgumentError, "#{dir} does not exist"
@@ -55,18 +58,21 @@ module Snapsync
                 @cleanup = nil
                 @enabled = true
                 @autoclean = true
+                write_config
             end
-            write_config
         end
 
         def each_snapshot_raw(&block)
             Snapshot.each_snapshot_raw(dir, &block)
         end
+
+        # @yieldparam snapshot [Snapshot]
         def each_snapshot(&block)
             Snapshot.each(dir, &block)
         end
 
         def write_config
+            Snapsync.debug "SyncTarget #{dir} write_config"
             config = Hash['uuid' => uuid, 'policy' => Hash.new]
             config['policy']['type'] =
                 case sync_policy
@@ -85,6 +91,7 @@ module Snapsync
         end
 
         def read_config
+            Snapsync.debug "SyncTarget #{dir} read_config"
             begin
                 if !(raw_config = YAML.load(config_path.read))
                     raise NoUUIDError, "empty configuration file found in #{config_path}"
@@ -167,12 +174,15 @@ module Snapsync
                 self.class.parse_policy(type, options)
         end
 
+        # @param [Snapshot] s
         def delete(s, dry_run: false)
+            btrfs = Btrfs.get(s.subvolume_dir)
+
             Snapsync.info "Removing snapshot #{s.num} #{s.date.to_time} at #{s.subvolume_dir}"
             return if dry_run
 
             begin
-                Btrfs.run("subvolume", "delete", '--commit-each', s.subvolume_dir.to_s)
+                btrfs.run("subvolume", "delete", s.subvolume_dir.path_part)
             rescue Btrfs::Error
                 Snapsync.warn "failed to remove snapshot at #{s.subvolume_dir}, keeping the rest of the snapshot"
                 return
@@ -180,7 +190,7 @@ module Snapsync
 
             Snapsync.info "Flushing data to disk"
             begin
-                Btrfs.run("subvolume", "sync", self.dir.to_s)
+                btrfs.run("subvolume", "sync", self.dir.to_s)
             rescue Btrfs::Error
             end
 

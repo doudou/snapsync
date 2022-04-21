@@ -3,6 +3,7 @@ module Snapsync
     class Sync
         attr_reader :config
 
+        # @return [SyncTarget]
         attr_reader :target
 
         def initialize(config, target, autoclean: nil)
@@ -28,19 +29,21 @@ module Snapsync
         # One usually wants to call {#run}, which also takes care of running
         # cleanup if {#autoclean?} is true
         def sync
-            LocalSync.new(config, target).sync
+            SnapshotTransfer.new(config, target).sync
         end
 
         def remove_partially_synchronized_snapshots
+            btrfs_target = Btrfs.get(@target.dir)
+
             target.each_snapshot_raw do |path, snapshot, error|
                 next if !error && !snapshot.partial?
 
                 Snapsync.info "Removing partial snapshot at #{path}"
                 begin
                     if (path + "snapshot").exist?
-                        Btrfs.run("subvolume", "delete", (path + "snapshot").to_s)
+                        btrfs_target.run("subvolume", "delete", (path + "snapshot").path_part)
                     elsif (path + "snapshot.partial").exist?
-                        Btrfs.run("subvolume", "delete", (path + "snapshot.partial").to_s)
+                        btrfs_target.run("subvolume", "delete", (path + "snapshot.partial").path_part)
                     end
                 rescue Btrfs::Error => e
                     Snapsync.warn "failed to remove snapshot at #{path}, keeping the rest of the snapshot"
@@ -51,8 +54,9 @@ module Snapsync
                 path.rmtree
                 Snapsync.info "Flushing data to disk"
                 begin
-                    Btrfs.run("subvolume", "sync", path.to_s)
+                    btrfs_target.run("subvolume", "sync", path.path_part)
                 rescue Btrfs::Error
+                    # Ignored
                 end
             end
         end

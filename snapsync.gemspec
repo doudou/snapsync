@@ -14,7 +14,7 @@ Gem::Specification.new do |spec|
   spec.license       = "MIT"
   spec.description   =<<-EOD
 Snapsync is a tool that automates transferring snapper snapshots to
-external media (USB drives ...) and managing these snapshots (e.g.
+external media (USB drives ...), remote filesystems [experimental] and managing these snapshots (e.g.
 timeline cleanup)
 EOD
 
@@ -23,14 +23,21 @@ EOD
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
+  spec.add_dependency 'rexml', '~> 3.2.0'
   spec.add_dependency 'logging', '~> 2.0', ">= 2.0.0"
-  spec.add_dependency 'concurrent-ruby', '~> 0.9.0', '>= 0.9'
-  spec.add_dependency 'ruby-dbus', "~> 0.11.0", ">= 0.11"
-  spec.add_dependency 'thor', "~> 0.19.0", ">= 0.19.1"
+  spec.add_dependency 'concurrent-ruby', '~> 1.1'
+  spec.add_dependency 'ruby-dbus', "~> 0.16.0"
+  spec.add_dependency 'thor', "~> 1.1"
+  spec.add_dependency 'uri-ssh_git', "~> 2.0.0"
+  spec.add_dependency 'eximius-net-ssh', ">= 6.3.1"
+  spec.add_dependency 'net-sftp', "~> 3.0.0"
+  spec.add_dependency 'ed25519', ">= 1.2"
+  spec.add_dependency 'bcrypt_pbkdf', ">= 1.0"
 
-  spec.add_development_dependency "bundler", "~> 1.10"
-  spec.add_development_dependency "rake", "~> 10.0"
+  spec.add_development_dependency "bundler", "~> 2"
+  spec.add_development_dependency "rake", "~> 13"
   spec.add_development_dependency "minitest", "~> 5.0", ">= 5.7"
   spec.add_development_dependency "flexmock", "~> 2.0", ">= 2.0"
   spec.add_development_dependency "fakefs"
+  spec.add_development_dependency "irb"
 end

@@ -10,6 +10,7 @@ module Snapsync
         attr_reader :subvolume
 
         # The filesystem type
+        # @return [String]
         attr_reader :fstype
 
         def initialize(name)
@@ -73,6 +74,11 @@ module Snapsync
         # Delete one of this configuration's snapshots
         def delete(snapshot)
             system("snapper", "-c", name, "delete", snapshot.num.to_s)
+        end
+
+        def cleanup
+            Snapsync.debug "SnapperConfig.cleanup"
+            system('snapper', '-c', name, 'cleanup', 'all')
         end
 
         # Create a SnapperConfig object from the data in a configuration file

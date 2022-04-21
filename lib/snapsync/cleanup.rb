@@ -8,6 +8,7 @@ module Snapsync
             @policy = policy
         end
 
+        # @param [SyncTarget] target
         def cleanup(target, dry_run: false)
             snapshots = target.each_snapshot.to_a
             filtered_snapshots = policy.filter_snapshots(snapshots).to_set

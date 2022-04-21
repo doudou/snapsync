@@ -1,17 +1,26 @@
 module Snapsync
-    # Synchronization between local file systems
-    class LocalSync
+    # Snapshot transfer between two btrfs filesystems
+    class SnapshotTransfer
         # The snapper configuration we should synchronize
         # 
         # @return [SnapperConfig]
         attr_reader :config
         # The target directory into which to synchronize
         #
-        # @return [LocalTarget]
+        # @return [SyncTarget]
         attr_reader :target
+
+        # @return [Btrfs] src filesystem
+        attr_reader :btrfs_src
+
+        # @return [Btrfs] dest filesystem
+        attr_reader :btrfs_dest
         
         def initialize(config, target)
             @config, @target = config, target
+
+            @btrfs_src = Btrfs.get(config.subvolume)
+            @btrfs_dest = Btrfs.get(@target.dir)
         end
 
         def create_synchronization_point
@@ -61,6 +70,7 @@ module Snapsync
             counter
         end
 
+        # @param [AgnosticPath] target_snapshot_dir
         def synchronize_snapshot(target_snapshot_dir, src, parent: nil)
             partial_marker_path = Snapshot.partial_marker_path(target_snapshot_dir)
 
@@ -79,23 +89,26 @@ module Snapsync
                 else
                     target_snapshot_dir.mkdir
                 end
-                FileUtils.touch(partial_marker_path.to_s)
+                partial_marker_path.touch
             end
 
             if copy_snapshot(target_snapshot_dir, src, parent: parent)
                 partial_marker_path.unlink
-                Btrfs.run("filesystem", "sync", target_snapshot_dir.to_s)
+                btrfs_dest.run("filesystem", "sync", target_snapshot_dir.path_part)
                 Snapsync.info "Successfully synchronized #{src.snapshot_dir}"
                 true
             end
         end
 
+        # @param [AgnosticPath] target_snapshot_dir
+        # @param [Snapshot] src
+        # @param [Snapshot, nil] parent
         def copy_snapshot(target_snapshot_dir, src, parent: nil)
             # This variable is used in the 'ensure' block. Make sure it is
             # initialized properly
             success = false
 
-            File.open(target_snapshot_dir + "info.xml", 'w') do |io|
+            (target_snapshot_dir + "info.xml").open('w') do |io|
                 io.write (src.snapshot_dir + "info.xml").read
             end
 
@@ -112,15 +125,15 @@ module Snapsync
             start = Time.now
             bytes_transferred = nil
             bytes_transferred =
-                Btrfs.popen('send', *parent_opt, src.subvolume_dir.to_s) do |send_io|
-                    Btrfs.popen('receive', target_snapshot_dir.to_s, mode: 'w', out: '/dev/null') do |receive_io|
+                btrfs_src.popen('send', *parent_opt, src.subvolume_dir.to_s) do |send_io|
+                    btrfs_dest.popen('receive', target_snapshot_dir.path_part, mode: 'w', out: '/dev/null') do |receive_io|
                         receive_io.sync = true
                         copy_stream(send_io, receive_io, estimated_size: estimated_size)
                     end
                 end
 
             Snapsync.info "Flushing data to disk"
-            Btrfs.run("filesystem", "sync", target_snapshot_dir.to_s)
+            btrfs_dest.run("filesystem", "sync", target_snapshot_dir.path_part)
             duration = Time.now - start
             rate = bytes_transferred / duration
             Snapsync.info "Transferred #{human_readable_size(bytes_transferred)} in #{human_readable_time(duration)} (#{human_readable_size(rate)}/s)"
@@ -128,10 +141,10 @@ module Snapsync
             true
 
         rescue Exception => e
-            Snapsync.warn "Failed to synchronize #{src.snapshot_dir}, deleting target directory"
             subvolume_dir = target_snapshot_dir + "snapshot"
+            Snapsync.warn "Failed to synchronize #{src.snapshot_dir}, deleting target directory #{subvolume_dir}"
             if subvolume_dir.directory?
-                Btrfs.run("subvolume", "delete", subvolume_dir.to_s)
+                btrfs_dest.run("subvolume", "delete", subvolume_dir.path_part)
             end
             if target_snapshot_dir.directory?
                 target_snapshot_dir.rmtree
@@ -142,6 +155,9 @@ module Snapsync
 
         def sync
             STDOUT.sync = true
+
+            # Do a snapper cleanup before syncing
+            config.cleanup
 
             # First, create a snapshot and protect it against cleanup, to use as
             # synchronization point
@@ -190,23 +206,6 @@ module Snapsync
             end
 
             last_common_snapshot
-        end
-
-        def human_readable_time(time)
-            hrs = time / 3600
-            min = (time / 60) % 60
-            sec = time % 60
-            "%02i:%02i:%02i" % [hrs, min, sec]
-        end
-
-        def human_readable_size(size, digits: 1)
-            order = ['B', 'kB', 'MB', 'GB']
-            magnitude =
-                if size > 0
-                    Integer(Math.log2(size) / 10)
-                else 0
-                end
-            "%.#{digits}f#{order[magnitude]}" % [Float(size) / (1024 ** magnitude)]
         end
     end
 end

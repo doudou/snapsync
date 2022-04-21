@@ -1,3 +1,7 @@
+require 'uri/ssh_git'
+require 'net/ssh'
+require 'net/sftp'
+
 require 'pathname'
 require 'logging'
 require 'pp'
@@ -8,13 +12,18 @@ require 'date'
 require 'concurrent'
 
 require "snapsync/version"
+require "snapsync/util"
 require "snapsync/exceptions"
 require 'snapsync/btrfs'
+require 'snapsync/btrfs_subvolume'
 require "snapsync/snapper_config"
 require "snapsync/snapshot"
-require "snapsync/local_target"
-require "snapsync/local_sync"
+require "snapsync/sync_target"
+require "snapsync/snapshot_transfer"
 require 'snapsync/cleanup'
+
+require 'snapsync/remote_pathname'
+require 'snapsync/ssh_popen'
 
 require 'snapsync/default_sync_policy'
 require 'snapsync/timeline_sync_policy'
@@ -91,5 +100,25 @@ end
 
 module Snapsync
     install_root_logging(forward: true)
+
+    class << self
+        attr_accessor :SSH_DEBUG
+    end
+    Snapsync.SSH_DEBUG = false
+
+    # @param [String] dir
+    # @return [AgnosticPath]
+    def self.path(dir)
+        raise "Nil dir" if dir.nil?
+        if dir.instance_of? RemotePathname or dir.include? ':'
+            begin
+                RemotePathname.new(dir)
+            rescue URI::InvalidComponentError
+                LocalPathname.new(dir)
+            end
+        else
+            LocalPathname.new dir
+        end
+    end
 end
 

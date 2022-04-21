@@ -1,9 +1,11 @@
 require 'thor'
 require 'snapsync'
+require 'set'
 
 module Snapsync
     class CLI < Thor
         class_option :debug, type: :boolean, default: false
+        class_option :ssh_debug, type: :boolean, default: false
 
         no_commands do
             def config_from_name(name)
@@ -21,53 +23,57 @@ module Snapsync
                 if options[:debug]
                     Snapsync.logger.level = 'DEBUG'
                 end
+
+                Snapsync.SSH_DEBUG = options[:ssh_debug]
             end
 
             # Resolves a path (or nil) into a list of snapsync targets and
             # yields them
             #
-            # @param [String,nil] dir the path the user gave, or nil if all
+            # @param [AgnosticPath,nil] dir the path the user gave, or nil if all
             #   available auto-sync paths should be processed. If the directory is
             #   a target, it is yield as-is. It can also be the root of a sync-all
             #   target (with proper snapsync target as subdirectories whose name
             #   matches the snapper configurations)
             #
-            # @yieldparam [LocalTarget] target
+            # @yieldparam [SnapperConfig] config
+            # @yieldparam [SyncTarget] target
             def each_target(dir = nil)
                 return enum_for(__method__) if !block_given?
                 if dir
-                    dir = Pathname.new(dir)
+                    dir = Snapsync::path(dir)
                     begin
-                        return yield(nil, LocalTarget.new(dir, create_if_needed: false))
-                    rescue LocalTarget::InvalidTargetPath
+                        return yield(nil, SyncTarget.new(dir, create_if_needed: false))
+                    rescue SyncTarget::InvalidTargetPath
                     end
 
                     SyncAll.new(dir).each_target do |config, target|
                         yield(config, target)
                     end
                 else
-                    autosync = AutoSync.load_default
+                    autosync = AutoSync.new
                     autosync.each_available_target do |config, target|
                         yield(config, target)
                     end
                 end
             end
 
+            # @return [String, Snapsync::Path, Pathname] uuid, mountpoint, relative
             def partition_of(dir)
-                partitions = PartitionsMonitor.new
-                PartitionsMonitor.new.partition_of(dir)
+                PartitionsMonitor.new(dir).partition_of(dir)
             end
         end
 
-        desc 'sync <CONFIG_DIR>', 'synchronizes the snapper configuration CONFIG with the snapsync target DIR'
+        desc 'sync <CONFIG> <DIR>', 'synchronizes the snapper configuration CONFIG with the snapsync target DIR'
         option :autoclean, type: :boolean, default: nil,
             desc: 'whether the target should be cleaned of obsolete snapshots',
             long_desc: "The default is to use the value specified in the target's configuration file. This command line option allows to override the default"
         def sync(config_name, dir)
             handle_class_options
+            dir = Snapsync::path(dir)
 
             config = config_from_name(config_name)
-            target = LocalTarget.new(Pathname.new(dir))
+            target = SyncTarget.new(dir)
             Sync.new(config, target, autoclean: options[:autoclean]).run
         end
 
@@ -78,7 +84,7 @@ module Snapsync
         def sync_all(dir)
             handle_class_options
 
-            dir = Pathname.new(dir)
+            dir = Snapsync::path(dir)
             op = SyncAll.new(dir, config_dir: SnapperConfig.default_config_dir, autoclean: options[:autoclean])
             op.run
         end
@@ -87,8 +93,8 @@ module Snapsync
         option :dry_run, type: :boolean, default: false
         def cleanup(dir)
             handle_class_options
+            target = SyncTarget.new(Snapsync::path(dir))
 
-            target = LocalTarget.new(Pathname.new(dir))
             if target.cleanup
                 target.cleanup.cleanup(target, dry_run: options[:dry_run])
             else
@@ -107,7 +113,7 @@ module Snapsync
                         [args.shift, args]
                     end
 
-                LocalTarget.parse_policy(*policy)
+                SyncTarget.parse_policy(*policy)
                 return *policy
             end
         end
@@ -116,6 +122,8 @@ module Snapsync
         long_desc <<-EOD
 NAME must be provided if DIR is to be added to the auto-sync targets (which
 is the default).
+
+DIR can be a remote filesystem path in scp-like format ( [user[:password]@]host:/path/to/drive/snapsync )
 
 By default, the default policy is used. To change this, provide additional
 arguments as would be expected by the policy subcommand. Run snapsync help
@@ -145,7 +153,9 @@ policy for more information
                 end
                 dir, *policy = *args
             end
-            dir = Pathname.new(dir)
+
+            dir = Snapsync::path(dir)
+            remote = dir.instance_of? RemotePathname
 
             # Parse the policy option early to avoid breaking later
             begin
@@ -180,11 +190,11 @@ policy for more information
 
             dirs.each do |path|
                 begin
-                    LocalTarget.new(path, create_if_needed: false)
+                    SyncTarget.new(path, create_if_needed: false)
                     Snapsync.info "#{path} was already initialized"
-                rescue ArgumentError, LocalTarget::NoUUIDError
+                rescue ArgumentError, SyncTarget::NoUUIDError
                     path.mkpath
-                    target = LocalTarget.new(path)
+                    target = SyncTarget.new(path)
                     target.change_policy(*policy)
                     target.write_config
                     Snapsync.info "initialized #{path} as a snapsync target"
@@ -204,15 +214,12 @@ policy for more information
         option :config_file, default: '/etc/snapsync.conf',
             desc: 'the configuration file that should be updated'
         def auto_add(name, dir)
-            uuid, relative = partition_of(Pathname.new(dir))
+            uuid, mountpoint, relative = partition_of(Snapsync::path(dir))
             conf_path = Pathname.new(options[:config_file])
 
-            autosync = AutoSync.new
-            if conf_path.exist?
-                autosync.load_config(conf_path)
-            end
+            autosync = AutoSync.new snapsync_config_file: conf_path
             exists = autosync.each_autosync_target.find do |t|
-                t.partition_uuid == uuid && t.path.cleanpath == relative.cleanpath
+                t.partition_uuid == uuid && t.mountpoint.cleanpath == mountpoint.cleanpath && t.relative.cleanpath == relative.cleanpath
             end
             if exists
                 if !exists.name
@@ -231,7 +238,7 @@ policy for more information
                 end
                 exists.name ||= name
             else
-                autosync.add AutoSync::AutoSyncTarget.new(uuid, relative, options[:automount], name)
+                autosync.add AutoSync::AutoSyncTarget.new(uuid, mountpoint, relative, options[:automount], name)
             end
             autosync.write_config(conf_path)
         end
@@ -239,8 +246,7 @@ policy for more information
         desc 'auto-remove NAME', "remove a target from auto-sync by name"
         def auto_remove(name)
             conf_path = Pathname.new('/etc/snapsync.conf')
-            autosync = AutoSync.new
-            autosync.load_config(conf_path)
+            autosync = AutoSync.new snapsync_config_file: conf_path
             autosync.remove(name: name)
             autosync.write_config(conf_path)
         end
@@ -264,6 +270,8 @@ OPTIONS := { year {int} | month {int} | week {int} | day {int} | hour {int} }
         EOD
         def policy(dir, type, *options)
             handle_class_options
+            dir = Snapsync::path(dir)
+
             # Parse the policy early to avoid breaking later
             policy = normalize_policy([type, *options])
             each_target(dir) do |_, target|
@@ -278,8 +286,9 @@ While it can easily be done manually, this command makes sure that the snapshots
         EOD
         def destroy(dir)
             handle_class_options
-            target_dir = Pathname.new(dir)
-            target = LocalTarget.new(target_dir, create_if_needed: false)
+            target_dir = Snapsync::path(dir)
+
+            target = SyncTarget.new(target_dir, create_if_needed: false)
             snapshots = target.each_snapshot.to_a
             snapshots.sort_by(&:num).each do |s|
                 target.delete(s)
@@ -294,8 +303,7 @@ While it can easily be done manually, this command makes sure that the snapshots
             default: '/etc/snapsync.conf'
         def auto_sync
             handle_class_options
-            auto = AutoSync.new(SnapperConfig.default_config_dir)
-            auto.load_config(Pathname.new(options[:config_file]))
+            auto = AutoSync.new(SnapperConfig.default_config_dir, snapsync_config_file: Pathname.new(options[:config_file]))
             if options[:one_shot]
                 auto.sync
             else
@@ -306,17 +314,38 @@ While it can easily be done manually, this command makes sure that the snapshots
         desc 'list [DIR]', 'list the snapshots present on DIR. If DIR is omitted, tries to access all targets defined as auto-sync targets'
         def list(dir = nil)
             handle_class_options
-            each_target(dir) do |_, target|
+            each_target(dir) do |config, target|
                 puts "== #{target.dir}"
                 puts "UUID: #{target.uuid}"
                 puts "Enabled: #{target.enabled?}"
                 puts "Autoclean: #{target.autoclean?}"
+                puts "Snapper config: #{config.name}"
                 print "Policy: "
                 pp target.sync_policy
 
+                snapshots_seen = Set.new
+
+                # @type [Snapshot]
+                last_snapshot = nil
                 puts "Snapshots:"
                 target.each_snapshot do |s|
+                    snapshots_seen.add(s.num)
+                    last_snapshot = s
                     puts "  #{s.num} #{s.to_time}"
+                end
+
+                puts " [transferrable:]"
+                config.each_snapshot do |s|
+                    if not snapshots_seen.include? s.num
+                        delta = s.size_diff_from(last_snapshot)
+                        puts "  #{s.num} #{s.to_time} => from: #{last_snapshot.num} delta: " \
+                            +"#{Snapsync.human_readable_size(delta)}"
+
+                        # If the delta was 0, then the data already exists on remote.
+                        if delta > 0
+                            last_snapshot = s
+                        end
+                    end
                 end
             end
         end

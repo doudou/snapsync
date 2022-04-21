@@ -1,0 +1,10 @@
+[Unit]
+Description=Run snapsync
+
+[Timer]
+OnCalendar=*-*-* 20:00:00
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

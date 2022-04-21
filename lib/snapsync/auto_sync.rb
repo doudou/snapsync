@@ -5,47 +5,89 @@ module Snapsync
     # partition availability, and will run sync-all on each (declared) targets
     # when they are available, optionally auto-mounting them
     class AutoSync
-        AutoSyncTarget = Struct.new :partition_uuid, :path, :automount, :name
+        AutoSyncTarget = Struct.new :partition_uuid, :mountpoint, :relative, :automount, :name
 
         attr_reader :config_dir
+        # @return [Hash<String,Array<AutoSyncTarget>>]
         attr_reader :targets
         attr_reader :partitions
 
         DEFAULT_CONFIG_PATH = Pathname.new('/etc/snapsync.conf')
 
-        def self.load_default
-            result = new
-            result.load_config
-            result
-        end
-
-        def initialize(config_dir = SnapperConfig.default_config_dir)
+        def initialize(config_dir = SnapperConfig.default_config_dir, snapsync_config_file: DEFAULT_CONFIG_PATH)
             @config_dir = config_dir
             @targets = Hash.new
             @partitions = PartitionsMonitor.new
+            partitions.poll
+
+            if snapsync_config_file.exist?
+                load_config snapsync_config_file
+            end
         end
 
-        def load_config(path = DEFAULT_CONFIG_PATH)
+        private def load_config(path = DEFAULT_CONFIG_PATH)
             conf = YAML.load(path.read) || Array.new
-            parse_config(conf)
+            parse_config_migrate_if_needed(path, conf)
         end
 
-        def parse_config(conf)
-            conf.each do |hash|
+        private def parse_config_migrate_if_needed(path, conf)
+            migrated = false
+            if conf.is_a? Array
+                # Version 1
+                Snapsync.info "Migrating config from v1 to v2"
+                conf = config_migrate_v1_v2(conf)
+                migrated = true
+            elsif conf['version'] != 2
+                raise 'Unknown snapsync config version: %d ' % [conf.version]
+            end
+            parse_config(conf)
+            if migrated
+                write_config(path)
+            end
+        end
+
+        private def config_migrate_v1_v2(conf)
+            Snapsync.info "Migrating config from version 1 to version 2"
+            targets = conf.map do |target|
+                target['relative'] = target['path']
+                target.delete('path')
+                begin
+                    target['mountpoint'] = partitions.mountpoint_of_uuid(target['partition_uuid'])
+                rescue
+                    raise "Could not migrate config."
+                end
+
+                target
+            end
+            {
+              'version' => 2,
+              'targets' => targets
+            }
+        end
+
+        private def parse_config(conf)
+            conf['targets'].each do |hash|
                 target = AutoSyncTarget.new
                 hash.each { |k, v| target[k] = v }
-                target.path = Pathname.new(target.path)
+                target.mountpoint = Snapsync::path(target.mountpoint)
+                target.relative = Snapsync::path(target.relative)
                 add(target)
             end
         end
 
         def write_config(path)
-            data = each_autosync_target.map do |target|
-                Hash['partition_uuid' => target.partition_uuid,
-                     'path' => target.path.to_s,
-                     'automount' => !!target.automount,
-                     'name' => target.name]
-            end
+            data = {
+              'version' => 2,
+              'targets' => each_autosync_target.map do |target|
+                  target.to_h do |k,v|
+                      if v.is_a? Snapsync::RemotePathname or v.is_a? Pathname
+                          [k.to_s,v.to_s]
+                      else
+                          [k.to_s,v]
+                      end
+                  end
+              end
+            }
             File.open(path, 'w') do |io|
                 YAML.dump(data, io)
             end
@@ -53,7 +95,7 @@ module Snapsync
 
         # Enumerates the declared autosync targets
         #
-        # @yieldparam [AutoSync] target
+        # @yieldparam [AutoSyncTarget] target
         # @return [void]
         def each_autosync_target
             return enum_for(__method__) if !block_given?
@@ -72,41 +114,34 @@ module Snapsync
         # @return [void]
         def each_available_autosync_target
             return enum_for(__method__) if !block_given?
-            partitions.poll
 
-            partitions.known_partitions.each do |uuid, fs|
-                autosync_targets = targets[uuid]
-                next if autosync_targets.empty?
-
-                mp = fs['MountPoints'].first
-                if mp
-                    mp = Pathname.new(mp[0..-2].pack("U*"))
-                end
-
+            each_autosync_target do |target|
+                # @type [RemotePathname]
                 begin
                     mounted = false
-
-                    if !mp
-                        if !autosync_targets.any?(&:automount)
+                    mountpoint = target.mountpoint
+                    if not mountpoint.mountpoint?
+                        if not target.automount
                             Snapsync.info "partition #{uuid} is present, but not mounted and automount is false. Ignoring"
                             next
                         end
 
                         Snapsync.info "partition #{uuid} is present, but not mounted, automounting"
                         begin
-                            mp = fs.Mount([]).first
+                            if mountpoint.is_a? RemotePathname
+                                # TODO: automounting of remote paths
+                                raise 'TODO'
+                            else
+                                fs.Mount([]).first
+                            end
+                            mounted = true
                         rescue Exception => e
                             Snapsync.warn "failed to mount, ignoring this target"
                             next
                         end
-                        mp = Pathname.new(mp)
-                        mounted = true
                     end
 
-                    autosync_targets.each do |target|
-                        yield(mp + target.path, target)
-                    end
-
+                    yield(target.mountpoint + target.relative, target)
                 ensure
                     if mounted
                         fs.Unmount([])
@@ -131,6 +166,7 @@ module Snapsync
             end
         end
 
+        # @param [AutoSyncTarget] target
         def add(target)
             targets[target.partition_uuid] ||= Array.new
             targets[target.partition_uuid] << target

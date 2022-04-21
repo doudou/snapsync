@@ -1,10 +1,23 @@
 module Snapsync
     # Representation of a single Snapper snapshot
     class Snapshot
+        class SnapshotCompareError < RuntimeError
+        end
+
         # The path to the snapshot directory
         #
         # @return [Pathname]
         attr_reader :snapshot_dir
+
+        # @return [Btrfs]
+        attr_reader :btrfs
+
+        # @return [SubvolumeInfo]
+        def info
+            # Load btrfs subvolume info
+            @info = SubvolumeInfo.new(subvolume_dir) unless @info
+            @info
+        end
 
         # The path to the snapshot's subvolume
         #
@@ -59,8 +72,11 @@ module Snapsync
             user_data['snapsync'] == target.uuid
         end
 
+
+        # @param [AgnosticPath] snapshot_dir
         def initialize(snapshot_dir)
             @snapshot_dir = snapshot_dir
+            @btrfs = Btrfs.get(snapshot_dir)
 
             if !snapshot_dir.directory?
                 raise InvalidSnapshot, "#{snapshot_dir} does not exist"
@@ -78,12 +94,21 @@ module Snapsync
         # This is an estimate of the size required to send this snapshot using
         # the given snapshot as parent
         #
-        # @param [Snapshot] a reference snapshot, which would be used as parent
+        # @param [Snapshot] snapshot a reference snapshot, which would be used as parent
         #   in the 'send' operation
         # @return [Integer] the size in bytes of the difference between the
         #   given snapshot and the current subvolume's state
         def size_diff_from(snapshot)
-            snapshot_gen = Btrfs.generation_of(snapshot.subvolume_dir)
+            if btrfs.mountpoint != snapshot.btrfs.mountpoint
+                recv_uuid = snapshot.info.received_uuid
+                local_snapshot = btrfs.subvolume_table.find do |s|
+                    s.uuid == recv_uuid
+                end
+                raise "Cannot find snapshot with uuid #{recv_uuid} locally." if local_snapshot.nil?
+                snapshot_gen = local_snapshot.cgen
+            else
+                snapshot_gen = snapshot.info.gen_at_creation
+            end
             size_diff_from_gen(snapshot_gen)
         end
 
@@ -103,7 +128,7 @@ module Snapsync
         # @return [Integer] size in bytes
         # @see size_diff_from size
         def size_diff_from_gen(gen)
-            Btrfs.find_new(subvolume_dir, gen).inject(0) do |size, line|
+            btrfs.find_new(subvolume_dir, gen).inject(0) do |size, line|
                 if line =~ /len (\d+)/
                     size + Integer($1)
                 else size
@@ -111,6 +136,9 @@ module Snapsync
             end
         end
 
+        # @yieldparam path [AgnosticPath]
+        # @yieldparam snapshot [Snapshot, nil]
+        # @yieldparam err [InvalidSnapshot, nil]
         def self.each_snapshot_raw(snapshot_dir)
             return enum_for(__method__, snapshot_dir) if !block_given?
             snapshot_dir.each_child do |path|
@@ -130,6 +158,7 @@ module Snapsync
         # The directory is supposed to be maintained in a snapper-compatible
         # foramt, meaning that the snapshot directory name must be the
         # snapshot's number
+        # @yieldparam snapshot [Snapshot]
         def self.each(snapshot_dir, with_partial: false)
             return enum_for(__method__, snapshot_dir, with_partial: with_partial) if !block_given?
             each_snapshot_raw(snapshot_dir) do |path, snapshot, error|

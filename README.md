@@ -39,6 +39,10 @@ configurations, it will create /path/to/the/drive/snapsync/root and
 /path/to/the/drive/snapsync/home). The 'default' synchronization policy is used
 (see below for other options).
 
+[EXPERIMENTAL] Snapsync targets can also be remote (ssh-reachable) filesystems by using the following scp-like target format:
+
+    $ snapsync init [user[:password]@]host:/path/to/drive/snapsync
+
 If you use systemd, the background systemd job will from now on synchronize the
 new target whenever it is present (i.e. as soon as it is plugged in). If you
 don't, or if you decided to disable the service's auto-start, run (and keep on
@@ -87,8 +91,7 @@ properly. Use e.g. `--all=f` instead of `--no-all`
 ## Future development
 
 The main two functionalities that I plan to add to snapsync are having a
-per-session service that provides notifications of what snapsync is doing, and
-remote backup (through e.g. SSH)
+per-session service that provides notifications of what snapsync is doing.
 
 ## Development
 
