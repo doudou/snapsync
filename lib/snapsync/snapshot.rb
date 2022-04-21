@@ -1,6 +1,9 @@
 module Snapsync
     # Representation of a single Snapper snapshot
     class Snapshot
+        class SnapshotCompareError < RuntimeError
+        end
+
         # The path to the snapshot directory
         #
         # @return [Pathname]
@@ -8,6 +11,13 @@ module Snapsync
 
         # @return [Btrfs]
         attr_reader :btrfs
+
+        # @return [SubvolumeInfo]
+        def info
+            # Load btrfs subvolume info
+            @info = SubvolumeInfo.new(subvolume_dir) unless @info
+            @info
+        end
 
         # The path to the snapshot's subvolume
         #
@@ -84,12 +94,21 @@ module Snapsync
         # This is an estimate of the size required to send this snapshot using
         # the given snapshot as parent
         #
-        # @param [Snapshot] a reference snapshot, which would be used as parent
+        # @param [Snapshot] snapshot a reference snapshot, which would be used as parent
         #   in the 'send' operation
         # @return [Integer] the size in bytes of the difference between the
         #   given snapshot and the current subvolume's state
         def size_diff_from(snapshot)
-            snapshot_gen = btrfs.generation_of(snapshot.subvolume_dir)
+            if btrfs.mountpoint != snapshot.btrfs.mountpoint
+                recv_uuid = snapshot.info.received_uuid
+                local_snapshot = btrfs.subvolume_table.find do |s|
+                    s.uuid == recv_uuid
+                end
+                raise "Cannot find snapshot with uuid #{recv_uuid} locally." if local_snapshot.nil?
+                snapshot_gen = local_snapshot.cgen
+            else
+                snapshot_gen = snapshot.info.gen_at_creation
+            end
             size_diff_from_gen(snapshot_gen)
         end
 
