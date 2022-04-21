@@ -107,8 +107,9 @@ module Snapsync
     Snapsync.SSH_DEBUG = false
 
     # @param [String] dir
+    # @return [AgnosticPath]
     def self.path(dir)
-        raise "Empty dir" if dir.nil?
+        raise "Nil dir" if dir.nil?
         if dir.instance_of? RemotePathname or dir.include? ':'
             begin
                 RemotePathname.new(dir)
