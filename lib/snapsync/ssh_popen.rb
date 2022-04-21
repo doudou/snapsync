@@ -1,5 +1,10 @@
 module Snapsync
     class SSHPopen
+        class NonZeroExitCode < RuntimeError
+        end
+        class ExitSignal < RuntimeError
+        end
+
         # @return [IO]
         attr_reader :read_buffer
 
@@ -9,7 +14,7 @@ module Snapsync
         # @param machine [RemotePathname]
         # @param [Array] command
         # @param options [Hash]
-        def initialize(machine, command, options)
+        def initialize(machine, command, **options)
             @read_buffer, read_buffer_in = IO.pipe
             write_buffer_out, @write_buffer = IO.pipe
 
@@ -28,22 +33,41 @@ module Snapsync
                         ssh.logger.sev_threshold = Logger::Severity::DEBUG
                     end
                     # @type [Net::SSH::Connection::Channel]
-                    channel = ssh.exec(Shellwords.join command)
-                    channel.on_data do
-                        read_buffer_in.write(data)
-                    end
-                    channel.on_extended_data do
-                        data = data.chomp
-                        if data.length > 0
-                            Snapsync.error data.chomp
-                        end
-                    end
+                    channel = ssh.open_channel do |channel|
+                        Snapsync.debug "SSHPopen channel opened: #{channel}"
 
-                    channel.on_process do
-                        begin
-                            channel.send_data(write_buffer_out.read_nonblock(2 << 20))
-                        rescue IO::EAGAINWaitReadable
+                        channel.on_data do |ch, data|
+                            read_buffer_in.write(data)
                         end
+                        channel.on_extended_data do |ch, data|
+                            data = data.chomp
+                            if data.length > 0
+                                Snapsync.error data
+                            end
+                        end
+
+                        channel.on_request("exit-status") do |ch2, data|
+                            code = data.read_long
+                            if code != 0
+                                raise NonZeroExitCode, "Exited with code: #{code}"
+                            else
+                                Snapsync.debug "SSHPopen command finished."
+                            end
+                        end
+
+                        channel.on_request("exit-signal") do |ch2, data|
+                            exit_signal = data.read_long
+                            raise ExitSignal, "Exited due to signal: #{exit_signal}"
+                        end
+
+                        channel.on_process do
+                            begin
+                                channel.send_data(write_buffer_out.read_nonblock(2 << 20))
+                            rescue IO::EAGAINWaitReadable
+                            end
+                        end
+
+                        channel.exec(Shellwords.join command)
                     end
 
                     ssh.loop(0.001) {
@@ -53,7 +77,8 @@ module Snapsync
 
                         channel.active?
                     }
-                    Snapsync.debug "SSHPopen channel closed"
+
+                    Snapsync.debug "SSHPopen session closed"
                     read_buffer_in.close
                     write_buffer_out.close
                 end
