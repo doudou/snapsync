@@ -1,5 +1,11 @@
 module Snapsync
     class Btrfs
+        class << self
+            # @return [Hash]
+            attr_accessor :_mountpointCache
+        end
+        self._mountpointCache = {}
+
         class Error < RuntimeError
             attr_reader :error_lines
             def initialize(error_lines = Array.new)
@@ -33,11 +39,23 @@ module Snapsync
         
         # @param [AgnosticPath] mountpoint
         def initialize(mountpoint)
+            raise "Trying to create Btrfs wrapper on non-mountpoint #{mountpoint}" unless mountpoint.mountpoint?
+
+            Snapsync.debug "Creating Btrfs wrapper at #{mountpoint}"
             @mountpoint = mountpoint
 
-            raise "Trying to create Btrfs wrapper on non-mountpoint" unless mountpoint.mountpoint?
-
             @subvolume_table = read_subvolume_table
+        end
+
+        # @param [AgnosticPath] mountpoint
+        def self.get(mountpoint)
+            mountpoint = mountpoint.findmnt
+
+            self._mountpointCache.fetch(mountpoint.to_s) do
+                btrfs = Btrfs.new mountpoint
+                self._mountpointCache[mountpoint.to_s] = btrfs
+                btrfs
+            end
         end
 
         def btrfs_prog

@@ -19,8 +19,8 @@ module Snapsync
         def initialize(config, target)
             @config, @target = config, target
 
-            @btrfs_src = Btrfs.new(config.subvolume)
-            @btrfs_dest = Btrfs.new(@target.dir.parent_mountpoint)
+            @btrfs_src = Btrfs.get(config.subvolume)
+            @btrfs_dest = Btrfs.get(@target.dir)
         end
 
         def create_synchronization_point

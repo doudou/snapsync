@@ -33,7 +33,7 @@ module Snapsync
         end
 
         def remove_partially_synchronized_snapshots
-            btrfs_target = Btrfs.new(@target.dir.parent_mountpoint)
+            btrfs_target = Btrfs.get(@target.dir)
 
             target.each_snapshot_raw do |path, snapshot, error|
                 next if !error && !snapshot.partial?

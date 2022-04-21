@@ -66,7 +66,7 @@ module Snapsync
         # @param [AgnosticPath] snapshot_dir
         def initialize(snapshot_dir)
             @snapshot_dir = snapshot_dir
-            @btrfs = Btrfs.new(snapshot_dir.parent_mountpoint)
+            @btrfs = Btrfs.get(snapshot_dir)
 
             if !snapshot_dir.directory?
                 raise InvalidSnapshot, "#{snapshot_dir} does not exist"

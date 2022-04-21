@@ -88,7 +88,7 @@ module Snapsync
     # @param [AgnosticPath] subvolume_dir
     def initialize(subvolume_dir)
       @subvolume_dir = subvolume_dir
-      @btrfs = Btrfs.new(subvolume_dir.parent_mountpoint)
+      @btrfs = Btrfs.get(subvolume_dir)
 
       integers = Set[:subvolume_id, :generation, :gen_at_creation, :parent_id, :top_level_id, :send_transid, :receive_transid]
       btrfs.subvolume_show(subvolume_dir).each do |k, v|

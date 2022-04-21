@@ -172,7 +172,7 @@ module Snapsync
 
         # @param [Snapshot] s
         def delete(s, dry_run: false)
-            btrfs = Btrfs.new(s.subvolume_dir.parent_mountpoint)
+            btrfs = Btrfs.get(s.subvolume_dir)
 
             Snapsync.info "Removing snapshot #{s.num} #{s.date.to_time} at #{s.subvolume_dir}"
             return if dry_run
