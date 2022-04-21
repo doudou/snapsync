@@ -12,6 +12,7 @@ require 'date'
 require 'concurrent'
 
 require "snapsync/version"
+require "snapsync/util"
 require "snapsync/exceptions"
 require 'snapsync/btrfs'
 require 'snapsync/btrfs_subvolume'
