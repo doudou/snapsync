@@ -136,6 +136,9 @@ module Snapsync
             end
         end
 
+        # @yieldparam path [AgnosticPath]
+        # @yieldparam snapshot [Snapshot, nil]
+        # @yieldparam err [InvalidSnapshot, nil]
         def self.each_snapshot_raw(snapshot_dir)
             return enum_for(__method__, snapshot_dir) if !block_given?
             snapshot_dir.each_child do |path|
@@ -155,6 +158,7 @@ module Snapsync
         # The directory is supposed to be maintained in a snapper-compatible
         # foramt, meaning that the snapshot directory name must be the
         # snapshot's number
+        # @yieldparam snapshot [Snapshot]
         def self.each(snapshot_dir, with_partial: false)
             return enum_for(__method__, snapshot_dir, with_partial: with_partial) if !block_given?
             each_snapshot_raw(snapshot_dir) do |path, snapshot, error|

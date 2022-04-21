@@ -65,6 +65,7 @@ module Snapsync
         # @api private
         #
         # A IO.popen-like API to btrfs subcommands
+        # @yieldparam [IO] io
         def popen(*args, mode: 'r', raise_on_error: true, **options)
             # @type [IO,IO]
             err_r, err_w = IO.pipe

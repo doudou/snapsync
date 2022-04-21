@@ -140,7 +140,9 @@ module Snapsync
 
             all = Hash.new
             each_partition_with_filesystem do |name, dev|
+                # @type [DBus::ProxyObjectInterface]
                 partition = dev['org.freedesktop.UDisks2.Block']
+                # @type [String]
                 uuid = partition['IdUUID']
 
                 if monitored_partitions.include?(uuid)

@@ -101,6 +101,8 @@ module Snapsync
         end
 
         # @param [AgnosticPath] target_snapshot_dir
+        # @param [Snapshot] src
+        # @param [Snapshot, nil] parent
         def copy_snapshot(target_snapshot_dir, src, parent: nil)
             # This variable is used in the 'ensure' block. Make sure it is
             # initialized properly

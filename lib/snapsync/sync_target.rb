@@ -40,7 +40,7 @@ module Snapsync
             "local:#{dir}"
         end
 
-        # @param [Pathname] dir
+        # @param [AgnosticPath] dir
         def initialize(dir, create_if_needed: true)
             if !dir.directory?
                 raise ArgumentError, "#{dir} does not exist"
@@ -65,6 +65,8 @@ module Snapsync
         def each_snapshot_raw(&block)
             Snapshot.each_snapshot_raw(dir, &block)
         end
+
+        # @yieldparam snapshot [Snapshot]
         def each_snapshot(&block)
             Snapshot.each(dir, &block)
         end
