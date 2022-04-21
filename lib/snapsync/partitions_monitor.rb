@@ -9,6 +9,9 @@ module Snapsync
         # @return [Hash<String, Dev>]
         attr_reader :known_partitions
 
+        # @return [Hash<String, DBus::ProxyObjectInterface>]
+        attr_reader :partition_table
+
         # @param [RemotePathname] machine Remote machine to connect to
         def initialize(machine = nil)
             if machine.nil?
@@ -54,6 +57,23 @@ module Snapsync
 
             @monitored_partitions = Set.new
             @known_partitions = Hash.new
+            @partition_table = Hash.new
+        end
+
+        # @param [DBus::ProxyObjectInterface] fs
+        # @return [Array<String>]
+        def mountpoints(fs)
+            raise "Not mounted?" if fs.nil?
+            mount_points = fs['MountPoints'].map do |str|
+                str[0..-2].pack("U*")
+            end
+            return mount_points
+        end
+
+        def mountpoint_of_uuid(partition_uuid)
+            mounts = mountpoints(known_partitions[partition_uuid])
+            raise "Ambiguous mountpoints: #{mounts}" if mounts.length > 1
+            mounts[0]
         end
 
         def monitor_for(partition_uuid)
