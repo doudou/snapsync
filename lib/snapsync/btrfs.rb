@@ -10,6 +10,7 @@ module Snapsync
             attr_reader :error_lines
             def initialize(error_lines = Array.new)
                 @error_lines = error_lines
+                super error_lines
             end
 
             def pretty_print(pp)
@@ -48,6 +49,7 @@ module Snapsync
         end
 
         # @param [AgnosticPath] mountpoint
+        # @return [Btrfs]
         def self.get(mountpoint)
             mountpoint = mountpoint.findmnt
 
@@ -67,54 +69,29 @@ module Snapsync
         # A IO.popen-like API to btrfs subcommands
         # @yieldparam [IO] io
         def popen(*args, mode: 'r', raise_on_error: true, **options)
-            # @type [IO,IO]
-            err_r, err_w = IO.pipe
-            block_error, block_result = nil
-
             Snapsync.debug "Btrfs(\"#{mountpoint}\").popen: #{args}"
 
             if @mountpoint.is_a? RemotePathname
-                err_w.close
-
-                proc = SSHPopen.new(@mountpoint, [btrfs_prog, *args], options)
-                block_result = yield(proc)
+                proc = SSHPopen.new(@mountpoint, [btrfs_prog, *args], **options)
+                return yield(proc)
             else
+                # @type [IO,IO]
+                err_r, err_w = IO.pipe
                 begin
-                    IO.popen([btrfs_prog, *args, err: err_w, **options], mode) do |io|
+                    IO.popen([btrfs_prog, *args], err: err_w, mode: mode) do |io|
                         err_w.close
-
-                        begin
-                            block_result = yield(io)
-                        rescue Error
-                            raise
-                        rescue Exception => block_error
-                        end
+                        return yield(io)
+                    end
+                    if not $?.success?
+                        raise Error.new, err_r.read.lines
                     end
                 ensure err_r.close
                 end
-            end
 
-            if $?.success? && !block_error
-                block_result
-            elsif raise_on_error
-                if block_error
-                    raise Error.new, block_error.message
-                else
-                    raise Error.new, "btrfs failed"
-                end
             end
-        rescue Error => e
-            prefix = args.join(" ")
-            begin
-                lines = err_r.readlines.map do |line|
-                    "#{prefix}: #{line.chomp}"
-                end
-            rescue IOError
-                lines = []
-            end
-            raise Error.new(e.error_lines + lines), e.message, e.backtrace
         end
 
+        # @return [String]
         def run(*args, **options)
             popen(*args, **options) do |io|
                 io.read.encode('utf-8', undef: :replace, invalid: :replace)
@@ -130,7 +107,8 @@ module Snapsync
             if info =~ /Generation[^:]*:\s+(\d+)/
                 Integer($1)
             else
-                raise UnexpectedBtrfsOutput, "unexpected output for 'btrfs subvolume show', expected #{info} to contain a Generation: line"
+                raise UnexpectedBtrfsOutput, "unexpected output for 'btrfs subvolume show'," \
+                    +" expected '#{info}' to contain a 'Generation:' line"
             end
         end
 
