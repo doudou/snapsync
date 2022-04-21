@@ -20,6 +20,12 @@ module Snapsync
         class UnexpectedBtrfsOutput < Error
         end
 
+        include Comparable
+        def <=>(other)
+            mountpoint.to_s <=> other.mountpoint.to_s
+        end
+
+        # @return [AgnosticPath]
         attr_reader :mountpoint
 
         # @return [Array<SubvolumeMinimalInfo>]
