@@ -5,6 +5,9 @@ Wants=udisks2.service
 [Service]
 Type=simple
 ExecStart=/usr/bin/snapsync auto-sync --one-shot
+Nice=19
+IOSchedulingClass=idle
+KillSignal=SIGINT
 
 [Install]
 WantedBy=default.target
