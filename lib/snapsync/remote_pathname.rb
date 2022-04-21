@@ -1,6 +1,9 @@
 require 'weakref'
 
 class Pathname
+  class NonZeroExitCode < RuntimeError
+  end
+
   def path_part
     to_s
   end
@@ -22,6 +25,11 @@ class Pathname
 
     proc = IO.popen(Shellwords.join ['findmnt','-n','-o','TARGET','-T', self.to_s])
     path = proc.read.strip
+    proc.close
+    if not $?.success?
+      raise NonZeroExitCode, "findmnt failed for #{self}"
+    end
+
     raise "findmnt failed" unless path
     p = Pathname.new path
     # Update cache
