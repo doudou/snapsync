@@ -29,7 +29,7 @@ EOD
   spec.add_dependency 'ruby-dbus', "~> 0.16.0"
   spec.add_dependency 'thor', "~> 1.1"
   spec.add_dependency 'uri-ssh_git', "~> 2.0.0"
-  spec.add_dependency 'net-ssh', ">= 6.3.0.beta2"
+  spec.add_dependency 'net-ssh', ">= 6.3.1"
   spec.add_dependency 'net-sftp', "~> 3.0.0"
   spec.add_dependency 'ed25519', ">= 1.2"
   spec.add_dependency 'bcrypt_pbkdf', ">= 1.0"
