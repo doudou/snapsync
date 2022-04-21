@@ -1,5 +1,6 @@
 require 'thor'
 require 'snapsync'
+require 'set'
 
 module Snapsync
     class CLI < Thor
@@ -35,7 +36,8 @@ module Snapsync
             #   target (with proper snapsync target as subdirectories whose name
             #   matches the snapper configurations)
             #
-            # @yieldparam [LocalTarget] target
+            # @yieldparam [SnapperConfig] config
+            # @yieldparam [SyncTarget] target
             def each_target(dir = nil)
                 return enum_for(__method__) if !block_given?
                 if dir
@@ -312,17 +314,38 @@ While it can easily be done manually, this command makes sure that the snapshots
         desc 'list [DIR]', 'list the snapshots present on DIR. If DIR is omitted, tries to access all targets defined as auto-sync targets'
         def list(dir = nil)
             handle_class_options
-            each_target(dir) do |_, target|
+            each_target(dir) do |config, target|
                 puts "== #{target.dir}"
                 puts "UUID: #{target.uuid}"
                 puts "Enabled: #{target.enabled?}"
                 puts "Autoclean: #{target.autoclean?}"
+                puts "Snapper config: #{config.name}"
                 print "Policy: "
                 pp target.sync_policy
 
+                snapshots_seen = Set.new
+
+                # @type [Snapshot]
+                last_snapshot = nil
                 puts "Snapshots:"
                 target.each_snapshot do |s|
+                    snapshots_seen.add(s.num)
+                    last_snapshot = s
                     puts "  #{s.num} #{s.to_time}"
+                end
+
+                puts " [transferrable:]"
+                config.each_snapshot do |s|
+                    if not snapshots_seen.include? s.num
+                        delta = s.size_diff_from(last_snapshot)
+                        puts "  #{s.num} #{s.to_time} => from: #{last_snapshot.num} delta: " \
+                            +"#{Snapsync.human_readable_size(delta)}"
+
+                        # If the delta was 0, then the data already exists on remote.
+                        if delta > 0
+                            last_snapshot = s
+                        end
+                    end
                 end
             end
         end
