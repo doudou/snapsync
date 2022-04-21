@@ -91,8 +91,7 @@ properly. Use e.g. `--all=f` instead of `--no-all`
 ## Future development
 
 The main two functionalities that I plan to add to snapsync are having a
-per-session service that provides notifications of what snapsync is doing, and
-remote backup (through e.g. SSH)
+per-session service that provides notifications of what snapsync is doing.
 
 ## Development
 
