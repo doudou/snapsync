@@ -14,6 +14,7 @@ require 'concurrent'
 require "snapsync/version"
 require "snapsync/exceptions"
 require 'snapsync/btrfs'
+require 'snapsync/btrfs_subvolume'
 require "snapsync/snapper_config"
 require "snapsync/snapshot"
 require "snapsync/sync_target"

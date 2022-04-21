@@ -21,12 +21,17 @@ module Snapsync
         end
 
         attr_reader :mountpoint
+
+        # @return [Array<SubvolumeMinimalInfo>]
+        attr_reader :subvolume_table
         
-        # @param [Pathname | AgnosticPath] mountpoint
+        # @param [AgnosticPath] mountpoint
         def initialize(mountpoint)
             @mountpoint = mountpoint
 
             raise "Trying to create Btrfs wrapper on non-mountpoint" unless mountpoint.mountpoint?
+
+            @subvolume_table = read_subvolume_table
         end
 
         def btrfs_prog
@@ -120,6 +125,63 @@ module Snapsync
         def find_new(subvolume_dir, last_gen, &block)
             run('subvolume', 'find-new', subvolume_dir.to_s, last_gen.to_s).
                 each_line(&block)
+        end
+
+        # @return [Array<SubvolumeMinimalInfo>]
+        def read_subvolume_table
+            table = []
+
+            text = run('subvolume', 'list','-pcgquR', mountpoint.path_part)
+            text.each_line do |l|
+                item = SubvolumeMinimalInfo.new
+                l.gsub!('top level', 'top_level')
+                l = l.split
+                l.each_slice(2) do |kv|
+                    k,v = kv
+                    if v == '-'
+                        v = nil
+                    else
+                        begin
+                            v = Integer(v)
+                        rescue
+                            # ignore
+                        end
+                    end
+                    item.instance_variable_set '@'+k, v
+                end
+                table.push item
+            end
+
+            table
+        end
+
+        # @param [AgnosticPath] subvolume_dir
+        # @return [Hash<String>]
+        def subvolume_show(subvolume_dir)
+            # @type [String]
+            info = run('subvolume', 'show', subvolume_dir.path_part)
+
+            data = {}
+
+            data['absolute_dir'] = info.lines[0].strip
+
+            lines = info.lines[1..-1]
+            lines.each_index do |i|
+                l = lines[i]
+                k, _, v = l.partition ':'
+                k = k.strip.downcase.gsub ' ', '_'
+
+                if k == 'snapshot(s)'
+                    data['snapshots'] = lines[i+1..-1].map do |s|
+                        s.strip
+                    end
+                    break
+                else
+                    data[k] = v.strip
+                end
+            end
+
+            data
         end
     end
 end
