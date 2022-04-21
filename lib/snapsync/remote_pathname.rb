@@ -19,11 +19,38 @@ class Pathname
 end
 
 module Snapsync
+  class << self
+    # @return [Hash]
+    attr_accessor :_mountpointCache
+  end
+  self._mountpointCache = {}
+
   class AgnosticPath
     def parent_mountpoint
+      list = []
       dir = self.dup
-      while !dir.mountpoint?
-        dir = dir.parent
+
+      while true
+        cached = Snapsync::_mountpointCache.fetch(dir.to_s, nil)
+        if cached
+          return cached
+        else
+          cached = Snapsync::_mountpointCache.fetch(dir.parent.to_s, nil)
+          if cached
+            return cached
+          end
+        end
+
+        list.push dir.dup
+        if dir.mountpoint?
+          break
+        else
+          dir = dir.parent
+        end
+      end
+
+      list.each do |l|
+        Snapsync::_mountpointCache[l.to_s] = dir
       end
       dir
     end
