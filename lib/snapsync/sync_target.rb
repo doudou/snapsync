@@ -72,6 +72,7 @@ module Snapsync
         end
 
         def write_config
+            Snapsync.debug "SyncTarget #{dir} write_config"
             config = Hash['uuid' => uuid, 'policy' => Hash.new]
             config['policy']['type'] =
                 case sync_policy
@@ -90,6 +91,7 @@ module Snapsync
         end
 
         def read_config
+            Snapsync.debug "SyncTarget #{dir} read_config"
             begin
                 if !(raw_config = YAML.load(config_path.read))
                     raise NoUUIDError, "empty configuration file found in #{config_path}"
