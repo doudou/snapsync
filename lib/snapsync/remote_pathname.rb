@@ -1,20 +1,36 @@
 require 'weakref'
 
 class Pathname
-  def parent_mountpoint
-    dir = self.dup
-    while !dir.mountpoint?
-      dir = dir.parent
-    end
-    dir
-  end
-
   def path_part
     to_s
   end
 
   def touch
     FileUtils.touch(to_s)
+  end
+
+  def findmnt
+    # An optimization to quickly get the mountpoint.
+    # 3 levels are needed to get from `.snapshots/<id>/snapshot` to a cached entry.
+    # Will probably be fine.
+    cached = Snapsync._mountpointCache.fetch(self.to_s, nil)
+    cached = Snapsync._mountpointCache.fetch(self.parent.to_s, nil) unless cached
+    cached = Snapsync._mountpointCache.fetch(self.parent.parent.to_s, nil) unless cached
+    return cached.dup if cached
+
+    Snapsync.debug "Pathname ('#{self}').findmnt"
+
+    proc = IO.popen(Shellwords.join ['findmnt','-n','-o','TARGET','-T', self.to_s])
+    path = proc.read.strip
+    raise "findmnt failed" unless path
+    p = Pathname.new path
+    # Update cache
+    p2 = self.dup
+    while p != p2
+      Snapsync._mountpointCache[p2.to_s] = p
+      p2 = p2.parent
+    end
+    p
   end
 end
 
@@ -26,35 +42,6 @@ module Snapsync
   self._mountpointCache = {}
 
   class AgnosticPath
-    def parent_mountpoint
-      list = []
-      dir = self.dup
-
-      while true
-        cached = Snapsync::_mountpointCache.fetch(dir.to_s, nil)
-        if cached
-          return cached
-        else
-          cached = Snapsync::_mountpointCache.fetch(dir.parent.to_s, nil)
-          if cached
-            return cached
-          end
-        end
-
-        list.push dir.dup
-        if dir.mountpoint?
-          break
-        else
-          dir = dir.parent
-        end
-      end
-
-      list.each do |l|
-        Snapsync::_mountpointCache[l.to_s] = dir
-      end
-      dir
-    end
-
     def exist?
       raise NotImplementedError
     end
@@ -108,6 +95,10 @@ module Snapsync
       raise NotImplementedError
     end
     def touch
+      raise NotImplementedError
+    end
+
+    def findmnt
       raise NotImplementedError
     end
 
@@ -205,6 +196,27 @@ module Snapsync
       rescue Net::SFTP::StatusException
         return false
       end
+    end
+
+    def findmnt
+      cached = Snapsync._mountpointCache.fetch(self.to_s, nil)
+      cached = Snapsync._mountpointCache.fetch(self.parent.to_s, nil) unless cached
+      return cached if cached
+
+      Snapsync.debug "RemotePathname ('#{uri}').findmnt"
+
+      path = ssh.exec!(Shellwords.join ['findmnt','-n','-o','TARGET','-T',uri.path]).strip
+      p = self.dup
+      p.uri.path = path
+
+      # Update cache
+      p2 = self.dup
+      while p.uri.path != p2.uri.path
+        Snapsync._mountpointCache[p2.to_s] = p
+        p2 = p2.parent
+      end
+
+      p
     end
 
     def mountpoint?
