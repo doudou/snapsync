@@ -5,7 +5,7 @@ module Snapsync
     # partition availability, and will run sync-all on each (declared) targets
     # when they are available, optionally auto-mounting them
     class AutoSync
-        AutoSyncTarget = Struct.new :partition_uuid, :mountpoint, :relative, :automount, :name, :type
+        AutoSyncTarget = Struct.new :partition_uuid, :mountpoint, :relative, :automount, :name
 
         attr_reader :config_dir
         # @return [Hash<String,Array<AutoSyncTarget>>]
@@ -34,6 +34,7 @@ module Snapsync
             migrated = false
             if conf.is_a? Array
                 # Version 1
+                Snapsync.info "Migrating config from v1 to v2"
                 conf = config_migrate_v1_v2(conf)
                 migrated = true
             elsif conf['version'] != 2
@@ -48,10 +49,6 @@ module Snapsync
         private def config_migrate_v1_v2(conf)
             Snapsync.info "Migrating config from version 1 to version 2"
             targets = conf.map do |target|
-                # Fallback to default if target type not defined (maybe older config)
-                if target['type'].nil?
-                    target['type'] = 'local'
-                end
                 target['relative'] = target['path']
                 target.delete('path')
                 begin
