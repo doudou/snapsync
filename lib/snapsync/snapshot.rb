@@ -145,7 +145,12 @@ module Snapsync
                 if path.directory? && path.basename.to_s =~ /^\d+$/
                     begin
                         snapshot = Snapshot.new(path)
-                        yield(path, snapshot, nil)
+			readonly = Btrfs.readonly(snapshot.subvolume_dir())
+			if readonly
+                            yield(path, snapshot, nil)
+			else
+			    Snapsync.info "found non-read-only snapshot #{path}"
+                        end
                     rescue InvalidSnapshot => e
                         yield(path, nil, e)
                     end
