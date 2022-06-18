@@ -14,7 +14,7 @@ module Snapsync
 
         # @param [RemotePathname] machine Remote machine to connect to
         def initialize(machine = nil)
-            if machine.nil?
+            if machine.nil? | machine.is_a?(LocalPathname)
                 dbus = DBus::SystemBus.instance
             else
                 sock_path = '/tmp/snapsync_%04d_remote.sock' % rand(10000)

@@ -214,7 +214,7 @@ policy for more information
         option :config_file, default: '/etc/snapsync.conf',
             desc: 'the configuration file that should be updated'
         def auto_add(name, dir)
-            uuid, mountpoint, relative = partition_of(Snapsync::path(dir))
+            uuid, mountpoint, relative = partition_of(dir)
             conf_path = Pathname.new(options[:config_file])
 
             autosync = AutoSync.new snapsync_config_file: conf_path
